@@ -1,0 +1,455 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EcoTrack — Create Your Organization</title>
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+          crossorigin="anonymous" />
+
+    <style>
+        /* ─── Design Tokens ─────────────────────────────── */
+        :root {
+            --bg: #080808;
+            --surface: #0f0f0f;
+            --surface-2: #171717;
+            --border: rgba(255, 255, 255, 0.07);
+            --accent: #c8f53e;
+            --accent-dim: rgba(200, 245, 62, 0.15);
+            --accent-glow: rgba(200, 245, 62, 0.35);
+            --text: #f0f0f0;
+            --text-muted: #6b7280;
+            --text-subtle: #9ca3af;
+            --input-bg: #111111;
+            --radius: 10px;
+            --radius-lg: 16px;
+        }
+
+        /* ─── Base ──────────────────────────────────────── */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+            /* Ambient noise / grid overlay */
+            body::before {
+                content: '';
+                position: fixed;
+                inset: 0;
+                background-image: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(200,245,62,0.06) 0%, transparent 70%), repeating-linear-gradient( 0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px ), repeating-linear-gradient( 90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px );
+                pointer-events: none;
+                z-index: 0;
+            }
+
+        /* ─── Card ──────────────────────────────────────── */
+        .register-card {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 560px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem 2.5rem 2rem;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.7), 0 0 80px -10px rgba(200,245,62,0.05);
+            animation: cardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ─── Branding ──────────────────────────────────── */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.75rem;
+            animation: fadeUp 0.5s 0.05s both;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+            .brand-icon svg {
+                display: block;
+            }
+
+        .brand-name {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text);
+        }
+
+        .card-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--text);
+            margin-bottom: 0.35rem;
+            animation: fadeUp 0.5s 0.1s both;
+        }
+
+        .card-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            animation: fadeUp 0.5s 0.15s both;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ─── Section Divider ───────────────────────────── */
+        .section-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 1.5rem 0 1rem;
+            animation: fadeUp 0.5s 0.2s both;
+        }
+
+            .section-label::before,
+            .section-label::after {
+                content: '';
+                flex: 1;
+                height: 1px;
+                background: var(--border);
+            }
+
+        /* ─── Form Elements ─────────────────────────────── */
+        .form-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-subtle);
+            margin-bottom: 0.4rem;
+        }
+
+        .form-control,
+        .form-select {
+            background-color: var(--input-bg);
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 0.9rem;
+            padding: 0.65rem 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+            .form-control::placeholder {
+                color: #3d3d3d;
+            }
+
+            .form-control:focus,
+            .form-select:focus {
+                background-color: var(--input-bg);
+                border-color: var(--accent);
+                box-shadow: 0 0 0 3px var(--accent-dim);
+                color: var(--text);
+                outline: none;
+            }
+
+            .form-control:hover:not(:focus),
+            .form-select:hover:not(:focus) {
+                border-color: rgba(255,255,255,0.15);
+            }
+
+        /* Two-column row helper */
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        /* Django auto-generated field wrappers */
+        .form-group {
+            margin-bottom: 0.85rem;
+        }
+
+        /* Style Django's auto-rendered inputs/textareas */
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            background-color: var(--input-bg) !important;
+            border: 1px solid rgba(255,255,255,0.09) !important;
+            border-radius: var(--radius) !important;
+            color: var(--text) !important;
+            font-size: 0.9rem !important;
+            padding: 0.65rem 0.9rem !important;
+            transition: border-color 0.2s, box-shadow 0.2s !important;
+        }
+
+            input[type="text"]:focus,
+            input[type="email"]:focus,
+            input[type="password"]:focus,
+            textarea:focus,
+            select:focus {
+                border-color: var(--accent) !important;
+                box-shadow: 0 0 0 3px var(--accent-dim) !important;
+                outline: none !important;
+            }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Django error list */
+        .errorlist {
+            list-style: none;
+            padding: 0;
+            margin: 0.3rem 0 0;
+        }
+
+            .errorlist li {
+                font-size: 0.78rem;
+                color: #f87171;
+                background: rgba(248, 113, 113, 0.08);
+                border: 1px solid rgba(248,113,113,0.2);
+                border-radius: 6px;
+                padding: 0.3rem 0.6rem;
+                margin-top: 0.25rem;
+            }
+
+        /* Non-field errors banner */
+        .alert-error {
+            background: rgba(248,113,113,0.08);
+            border: 1px solid rgba(248,113,113,0.2);
+            border-radius: var(--radius);
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            color: #f87171;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: rgba(200,245,62,0.07);
+            border: 1px solid rgba(200,245,62,0.2);
+            border-radius: var(--radius);
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        /* ─── Submit Button ──────────────────────────────── */
+        .btn-eco {
+            width: 100%;
+            background: var(--accent);
+            color: #0a0a0a;
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: -0.01em;
+            border: none;
+            border-radius: var(--radius);
+            padding: 0.8rem 1.5rem;
+            margin-top: 1.5rem;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+        }
+
+            .btn-eco::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+            }
+
+            .btn-eco:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 32px var(--accent-glow), 0 0 0 1px var(--accent);
+            }
+
+            .btn-eco:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 8px var(--accent-glow);
+            }
+
+        /* ─── Footer Link ────────────────────────────────── */
+        .login-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+            .login-link a {
+                color: var(--accent);
+                text-decoration: none;
+                font-weight: 500;
+                transition: opacity 0.15s;
+            }
+
+                .login-link a:hover {
+                    opacity: 0.75;
+                }
+
+        /* ─── Responsive ─────────────────────────────────── */
+        @media (max-width: 480px) {
+            .register-card {
+                padding: 1.75rem 1.25rem 1.5rem;
+            }
+
+            .field-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <!-- DM Sans from Google Fonts (single import, lightweight) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap"
+          rel="stylesheet" />
+</head>
+<body>
+
+    <div class="register-card">
+
+        <!-- Branding -->
+        <div class="brand">
+            <div class="brand-icon">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M9 2C5.13 2 2 5.13 2 9s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm1 10.5H8v-5h2v5zm0-6.5H8V4h2v2z"
+                          fill="#080808" />
+                </svg>
+            </div>
+            <span class="brand-name">EcoTrack</span>
+        </div>
+
+        <h1 class="card-title">Create Your Organization</h1>
+        <p class="card-subtitle">Start tracking your carbon footprint across your entire team.</p>
+
+        <!-- Django messages -->
+        {% if messages %}
+        {% for message in messages %}
+        <div class="{% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+
+            <!-- ── Account Section ──────────────────────────── -->
+            <div class="section-label">Account Details</div>
+
+            {% for field in user_form %}
+            <div class="form-group">
+                <label class="form-label" for="{{ field.id_for_label }}">
+                    {{ field.label }}{% if field.field.required %}<span style="color:var(--accent);margin-left:2px;">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.errors %}
+                <ul class="errorlist">
+                    {% for error in field.errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            {% if user_form.non_field_errors %}
+            <div class="alert-error">
+                {% for error in user_form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- ── Organization Section ─────────────────────── -->
+            <div class="section-label">Organization Details</div>
+
+            {% for field in org_form %}
+            <div class="form-group">
+                <label class="form-label" for="{{ field.id_for_label }}">
+                    {{ field.label }}{% if field.field.required %}<span style="color:var(--accent);margin-left:2px;">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.errors %}
+                <ul class="errorlist">
+                    {% for error in field.errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            {% if org_form.non_field_errors %}
+            <div class="alert-error">
+                {% for error in org_form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Submit -->
+            <button type="submit" class="btn-eco">
+                Create Organization &amp; Account
+            </button>
+        </form>
+
+        <!-- Footer -->
+        <p class="login-link">
+            Already have an account? <a href="{% url 'login' %}">Sign in</a>
+        </p>
+
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmq17jAgBHTMHiJpBsIL3q2dK6Cx"
+            crossorigin="anonymous"></script>
+</body>
+</html>
