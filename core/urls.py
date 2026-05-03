@@ -15,4 +15,5 @@ urlpatterns = [
     path('dashboard/analytics/', views.dashboard, name='analytics'),
     path('dashboard/goals/', views.dashboard, name='goals'),
     path('dashboard/export/', views.dashboard, name='export_center'),
+    path('branch/dashboard/', views.branch_dashboard, name='branch_dashboard'),
 ]

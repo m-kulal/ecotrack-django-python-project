@@ -53,24 +53,35 @@ def register_organization(request):
     return render(request, "core/register.html", {"user_form": user_form, "org_form": org_form})
 
 # 3. Login Logic
+from django.contrib.auth import authenticate, login
+from core.models import Department
+
+from django.contrib import messages
+from core.models import Department
+
 def login_view(request):
     if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password')
-            user = authenticate(username=username, password=password)
-            if user is not None:
-                login(request, user)
-                return redirect('dashboard') # Redirects to our new starting point
-            else:
-                messages.error(request, "Invalid username or password.")
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)
+            
+            # 1. ADMIN CHECK (Check for UserProfile or Superuser status)
+            if hasattr(user, 'userprofile') and user.userprofile.role == 'ADMIN' or user.is_superuser:
+                return redirect('dashboard')
+            
+            # 2. MANAGER CHECK (Check if they are linked to a Department)
+            elif Department.objects.filter(managed_by=user).exists():
+                return redirect('branch_dashboard')
+            
+            # 3. DEFAULT FALLBACK
+            return redirect('dashboard')
         else:
-            messages.error(request, "Invalid username or password.")
-    
-    form = AuthenticationForm()
-    return render(request, 'core/login.html', {'form': form})
-
+            messages.error(request, "Invalid username or password")
+            
+    return render(request, 'core/login.html')
 # 4. Logout Logic
 def logout_view(request):
     logout(request)
@@ -79,21 +90,21 @@ def logout_view(request):
 # 5. DASHBOARD STARTING POINT
 @login_required
 def dashboard(request):
-    profile = request.user.userprofile
-    org = profile.organization
-    
-    # Let's give it some realistic "Dummy Data" so the UI looks alive
-    context = {
-        'org_name': org.name,
-        'total_emissions': "84.20",  # Matches the note in your screenshot
-        'limit_percentage': 72,      # Matches the note
-        'limit_bar_width': "72%",    # Used for the CSS progress bar
-        'limit_bar_color': "#39ff14", # Neon Green
-        'active_depts': org.department_set.count(),
-        'new_depts_this_month': 1,
-        'show_limit_warning': False,
-    }
-    return render(request, 'admin/dashboard.html', context)
+    # If the user is a manager, they MUST go to the branch dashboard
+    if Department.objects.filter(managed_by=request.user).exists():
+        return redirect('branch_dashboard')
+
+    # If the code reaches here, it means the user is an ADMIN or Superuser
+    try:
+        # Get profile or set to None for Superusers without profiles
+        admin_profile = getattr(request.user, 'userprofile', None)
+        return render(request, 'admin/dashboard.html', {
+            'admin_profile': admin_profile
+        })
+    except Exception as e:
+        # Only redirect to login if there is a critical system error
+        print(f"Dashboard Error: {e}")
+        return render(request, 'core/dashboard.html')
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
@@ -136,3 +147,21 @@ def manage_departments(request):
                 print(f"Detailed Error: {e}")
 
     return render(request, 'admin/departments.html', {'departments': departments})
+
+from core.models import Department
+
+@login_required
+def branch_dashboard(request):
+    # 1. Fetch the department by querying the table directly
+    # This avoids using the 'request.user.managed_department' attribute
+    dept = Department.objects.filter(managed_by=request.user).first()
+
+    # 2. Safety check: If they aren't actually a manager, send them away
+    if not dept:
+        return redirect('login')
+
+    # 3. Pass the 'dept' object to your template
+    return render(request, 'branch/dashboard.html', {
+        'department': dept,
+        'manager_name': request.user.username
+    })
