@@ -1,0 +1,570 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EcoTrack — Login</title>
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+          crossorigin="anonymous" />
+
+    <!-- Fonts: Syne (display) + DM Sans (body) — same as landing & register -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap"
+          rel="stylesheet" />
+
+    <style>
+        /* ─── Design Tokens ────────────────────────────────── */
+        :root {
+            --bg: #080808;
+            --surface: #0f0f0f;
+            --surface-2: #141414;
+            --border: rgba(255, 255, 255, 0.07);
+            --border-hover: rgba(255, 255, 255, 0.13);
+            --accent: #c8f53e;
+            --accent-dim: rgba(200, 245, 62, 0.10);
+            --accent-glow: rgba(200, 245, 62, 0.32);
+            --accent-glow2: rgba(200, 245, 62, 0.07);
+            --text: #f2f2f2;
+            --text-2: #9ca3af;
+            --text-3: #4b5563;
+            --input-bg: #0c0c0c;
+            --error: #f87171;
+            --error-bg: rgba(248, 113, 113, 0.07);
+            --error-border: rgba(248, 113, 113, 0.22);
+            --radius: 10px;
+            --radius-lg: 16px;
+            --font-display: 'Syne', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+            --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* ─── Reset & Base ─────────────────────────────────── */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+            /* Radial glow backdrop */
+            body::before {
+                content: '';
+                position: fixed;
+                top: -15%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 860px;
+                height: 560px;
+                background: radial-gradient(ellipse at 50% 38%, rgba(200,245,62,0.07) 0%, transparent 68%);
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            /* Subtle grid lines */
+            body::after {
+                content: '';
+                position: fixed;
+                inset: 0;
+                background-image: repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(255,255,255,0.016) 79px, rgba(255,255,255,0.016) 80px), repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(255,255,255,0.016) 79px, rgba(255,255,255,0.016) 80px);
+                pointer-events: none;
+                z-index: 0;
+            }
+
+        /* ─── Card ─────────────────────────────────────────── */
+        .login-card {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 460px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2.75rem 2.5rem 2.25rem;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 32px 80px rgba(0, 0, 0, 0.72), 0 0 80px -10px rgba(200, 245, 62, 0.05);
+            animation: cardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateY(28px) scale(0.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Top accent line that glows */
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(200,245,62,0.45), transparent);
+            border-radius: 1px;
+        }
+
+        /* ─── Branding ─────────────────────────────────────── */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            animation: fadeUp 0.5s 0.05s both;
+        }
+
+        .brand-dot {
+            width: 9px;
+            height: 9px;
+            background: var(--accent);
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 10px var(--accent-glow);
+            animation: pulseDot 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% {
+                box-shadow: 0 0 8px var(--accent-glow);
+            }
+
+            50% {
+                box-shadow: 0 0 22px var(--accent-glow), 0 0 42px var(--accent-glow2);
+            }
+        }
+
+        .brand-name {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        /* ─── Headings ─────────────────────────────────────── */
+        .card-title {
+            font-family: var(--font-display);
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: var(--text);
+            line-height: 1.1;
+            margin-bottom: 0.4rem;
+            animation: fadeUp 0.5s 0.10s both;
+        }
+
+        .card-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-2);
+            margin-bottom: 2rem;
+            animation: fadeUp 0.5s 0.15s both;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ─── Form Fields ──────────────────────────────────── */
+        .field-wrap {
+            margin-bottom: 1.1rem;
+            animation: fadeUp 0.5s 0.2s both;
+        }
+
+            .field-wrap + .field-wrap {
+                animation-delay: 0.26s;
+            }
+
+        .field-label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text-2);
+            margin-bottom: 0.45rem;
+            letter-spacing: 0.01em;
+        }
+
+            .field-label .required-star {
+                color: var(--accent);
+                margin-left: 2px;
+            }
+
+        .field-input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            padding: 0.7rem 0.95rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+            .field-input::placeholder {
+                color: #2e2e2e;
+            }
+
+            .field-input:hover:not(:focus) {
+                border-color: rgba(255,255,255,0.15);
+            }
+
+            .field-input:focus {
+                border-color: var(--accent);
+                box-shadow: 0 0 0 3px var(--accent-dim), 0 0 18px var(--accent-glow2);
+            }
+
+        /* Password wrapper (room for a show/hide toggle) */
+        .password-wrap {
+            position: relative;
+        }
+
+            .password-wrap .field-input {
+                padding-right: 2.8rem;
+            }
+
+        .toggle-pw {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 2px;
+            cursor: pointer;
+            color: var(--text-3);
+            transition: color 0.18s;
+            display: flex;
+            align-items: center;
+        }
+
+            .toggle-pw:hover {
+                color: var(--text-2);
+            }
+
+        /* ─── Inline Field Errors ──────────────────────────── */
+        .field-error {
+            margin-top: 0.35rem;
+            font-size: 0.775rem;
+            color: var(--error);
+            display: flex;
+            align-items: flex-start;
+            gap: 0.35rem;
+        }
+
+            .field-error svg {
+                flex-shrink: 0;
+                margin-top: 1px;
+            }
+
+        /* ─── Non-field / General Error Banner ────────────── */
+        .error-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            background: var(--error-bg);
+            border: 1px solid var(--error-border);
+            border-radius: var(--radius);
+            padding: 0.75rem 0.9rem;
+            margin-bottom: 1.4rem;
+            font-size: 0.84rem;
+            color: var(--error);
+            animation: fadeUp 0.3s both;
+        }
+
+            .error-banner svg {
+                flex-shrink: 0;
+                margin-top: 1px;
+            }
+
+        /* ─── Submit Button ────────────────────────────────── */
+        .btn-eco {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            background: var(--accent);
+            color: #060606;
+            font-family: var(--font-body);
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: -0.01em;
+            border: none;
+            border-radius: var(--radius);
+            padding: 0.82rem 1.5rem;
+            margin-top: 1.75rem;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.22s var(--spring), box-shadow 0.22s ease;
+            animation: fadeUp 0.5s 0.32s both;
+        }
+
+            .btn-eco::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(135deg, rgba(255,255,255,0.16) 0%, transparent 55%);
+                pointer-events: none;
+            }
+
+            .btn-eco:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 10px 38px var(--accent-glow), 0 0 0 1px var(--accent);
+            }
+
+            .btn-eco:active {
+                transform: translateY(-1px);
+            }
+
+            /* Arrow icon inside button */
+            .btn-eco svg {
+                transition: transform 0.2s var(--spring);
+            }
+
+            .btn-eco:hover svg {
+                transform: translateX(3px);
+            }
+
+        /* ─── Divider ──────────────────────────────────────── */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 1.75rem 0 0;
+            animation: fadeUp 0.5s 0.38s both;
+        }
+
+            .divider::before,
+            .divider::after {
+                content: '';
+                flex: 1;
+                height: 1px;
+                background: var(--border);
+            }
+
+            .divider span {
+                font-size: 0.72rem;
+                color: var(--text-3);
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
+
+        /* ─── Register Link ────────────────────────────────── */
+        .register-link {
+            text-align: center;
+            margin-top: 1.2rem;
+            font-size: 0.84rem;
+            color: var(--text-2);
+            animation: fadeUp 0.5s 0.44s both;
+        }
+
+            .register-link a {
+                color: var(--accent);
+                font-weight: 600;
+                text-decoration: none;
+                transition: opacity 0.18s;
+            }
+
+                .register-link a:hover {
+                    opacity: 0.72;
+                }
+
+        /* ─── Responsive ───────────────────────────────────── */
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 2rem 1.25rem 1.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+
+        <!-- Branding -->
+        <div class="brand">
+            <span class="brand-dot"></span>
+            <a href="/" class="brand-name">EcoTrack</a>
+        </div>
+
+        <!-- Headings -->
+        <h1 class="card-title">Welcome Back</h1>
+        <p class="card-subtitle">Login to your organization's account.</p>
+
+        <!-- ── Non-field errors (e.g. invalid credentials) ── -->
+        {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}
+        <div class="error-banner" role="alert">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                <circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="1.4" />
+                <path d="M7.5 4.5v3.5M7.5 10.5h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            </svg>
+            {{ error }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- ── Django messages framework ── -->
+        {% if messages %}
+        {% for message in messages %}
+        <div class="error-banner" role="alert">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+                <circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="1.4" />
+                <path d="M7.5 4.5v3.5M7.5 10.5h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            </svg>
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- ── Login Form ── -->
+        <form method="POST" novalidate>
+            {% csrf_token %}
+
+            <!-- Username -->
+            <div class="field-wrap">
+                <label class="field-label" for="id_username">
+                    Username <span class="required-star">*</span>
+                </label>
+                <input type="text"
+                       name="username"
+                       id="id_username"
+                       class="field-input"
+                       placeholder="Enter your username"
+                       autocomplete="username"
+                       autofocus
+                       value="{{ form.username.value|default:'' }}" />
+                {% if form.username.errors %}
+                {% for error in form.username.errors %}
+                <div class="field-error">
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                        <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" stroke-width="1.3" />
+                        <path d="M6.5 3.5v3.2M6.5 8.9h.01" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                    </svg>
+                    {{ error }}
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+
+            <!-- Password -->
+            <div class="field-wrap">
+                <label class="field-label" for="id_password">
+                    Password <span class="required-star">*</span>
+                </label>
+                <div class="password-wrap">
+                    <input type="password"
+                           name="password"
+                           id="id_password"
+                           class="field-input"
+                           placeholder="Enter your password"
+                           autocomplete="current-password" />
+                    <!-- Show / hide toggle -->
+                    <button type="button"
+                            class="toggle-pw"
+                            id="togglePw"
+                            aria-label="Toggle password visibility">
+                        <!-- Eye icon (shown when password is hidden) -->
+                        <svg id="iconEye" width="17" height="17" viewBox="0 0 17 17" fill="none">
+                            <path d="M1 8.5C1 8.5 3.5 3 8.5 3S16 8.5 16 8.5 13.5 14 8.5 14 1 8.5 1 8.5z"
+                                  stroke="currentColor" stroke-width="1.3" fill="none" />
+                            <circle cx="8.5" cy="8.5" r="2.2" stroke="currentColor" stroke-width="1.3" />
+                        </svg>
+                        <!-- Eye-off icon (shown when password is visible) -->
+                        <svg id="iconEyeOff" width="17" height="17" viewBox="0 0 17 17" fill="none" style="display:none;">
+                            <path d="M2 2l13 13M7.06 7.17A2.2 2.2 0 0010.9 10.9M4.2 4.3C2.5 5.6 1 8.5 1 8.5S3.5 14 8.5 14c1.5 0 2.9-.5 4-1.3M6.5 3.2C7.1 3.07 7.8 3 8.5 3c5 0 7.5 5.5 7.5 5.5s-.7 1.5-2 2.8"
+                                  stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                        </svg>
+                    </button>
+                </div>
+                {% if form.password.errors %}
+                {% for error in form.password.errors %}
+                <div class="field-error">
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                        <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" stroke-width="1.3" />
+                        <path d="M6.5 3.5v3.2M6.5 8.9h.01" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                    </svg>
+                    {{ error }}
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" class="btn-eco">
+                Sign In
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                    <path d="M1 7h12M8 2l5 5-5 5"
+                          stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </button>
+
+        </form>
+
+        <!-- Divider -->
+        <div class="divider"><span>New to EcoTrack?</span></div>
+
+        <!-- Register link -->
+        <p class="register-link">
+            Don't have an account?
+            <a href="{% url 'register' %}">Register here</a>
+        </p>
+
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmq17jAgBHTMHiJpBsIL3q2dK6Cx"
+            crossorigin="anonymous"></script>
+
+    <script>
+  /* ── Password show / hide toggle ── */
+  const toggleBtn = document.getElementById('togglePw');
+  const pwInput   = document.getElementById('id_password');
+  const iconEye   = document.getElementById('iconEye');
+  const iconOff   = document.getElementById('iconEyeOff');
+
+  toggleBtn.addEventListener('click', () => {
+    const isHidden = pwInput.type === 'password';
+    pwInput.type    = isHidden ? 'text' : 'password';
+    iconEye.style.display = isHidden ? 'none'  : '';
+    iconOff.style.display = isHidden ? ''      : 'none';
+  });
+    </script>
+
+</body>
+</html>

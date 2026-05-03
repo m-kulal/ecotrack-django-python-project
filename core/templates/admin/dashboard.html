@@ -1,0 +1,790 @@
+﻿{% extends 'admin/base_admin.html' %}
+
+{% block page_title %}Dashboard Overview{% endblock %}
+{% block breadcrumb %}Overview{% endblock %}
+{% block nav_overview %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ── Period toggle buttons ── */
+    .period-btn {
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        padding: 0.2rem 0.55rem;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        background: transparent;
+        color: var(--text-3);
+        transition: all 0.15s;
+    }
+
+        .period-btn.active-period {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+    /* ── Stat grid ── */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* ── Chart + activity row ── */
+    .chart-row {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* ── Activity list ── */
+    .activity-row {
+        display: flex;
+        gap: 0.75rem;
+        padding: 0.85rem 1.4rem;
+        border-bottom: 1px solid var(--border);
+        transition: background 0.15s;
+    }
+
+        .activity-row:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .activity-row:last-child {
+            border-bottom: none;
+        }
+
+    .activity-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1px;
+    }
+
+    .activity-icon-filled {
+        background: var(--accent-dim);
+        border: 1px solid rgba(57,255,20,0.15);
+    }
+
+    .activity-icon-empty {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+    }
+
+    /* ── Department table ── */
+    .dept-th {
+        padding: 0.6rem 1rem;
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        background: var(--surface-2);
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .dept-th-first {
+        padding-left: 1.4rem;
+    }
+
+    .dept-th-last {
+        text-align: right;
+        padding-right: 1.4rem;
+    }
+
+    .dept-td {
+        padding: 0.8rem 1rem;
+        font-size: 0.82rem;
+        color: var(--text);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+        transition: background 0.15s;
+    }
+
+    .dept-td-first {
+        padding-left: 1.4rem;
+    }
+
+    .dept-td-last {
+        text-align: right;
+        padding-right: 1.4rem;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .dept-tr:hover .dept-td {
+        background: rgba(255,255,255,0.022);
+    }
+
+    .dept-tr:last-child .dept-td {
+        border-bottom: none;
+    }
+
+    /* ── Status badges ── */
+    .badge-submitted {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 600;
+        padding: 0.2rem 0.55rem;
+        border-radius: 3px;
+        background: rgba(57,255,20,0.08);
+        border: 1px solid rgba(57,255,20,0.2);
+        color: var(--accent);
+    }
+
+    .badge-pending {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 600;
+        padding: 0.2rem 0.55rem;
+        border-radius: 3px;
+        background: rgba(255,68,68,0.08);
+        border: 1px solid rgba(255,68,68,0.2);
+        color: var(--danger);
+    }
+
+    .badge-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    /* ── Limit warning banner ── */
+    .limit-warning {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.75rem;
+        padding: 0.4rem 0.6rem;
+        background: rgba(255,68,68,0.07);
+        border: 1px solid rgba(255,68,68,0.2);
+        border-radius: 5px;
+        font-size: 0.72rem;
+        color: var(--danger);
+    }
+
+    /* ── Skeleton shimmer placeholders ── */
+    .skel {
+        background: var(--surface-3);
+        border-radius: 2px;
+        display: inline-block;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 860px) {
+        .stat-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 580px) {
+        .stat-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .chart-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+
+<div class="page-header anim-fade-up">
+    <div>
+        <div class="page-eyebrow">Admin Dashboard</div>
+        <h1 class="page-title">Dashboard Overview</h1>
+        <p class="page-subtitle">Monitor your organization's carbon footprint in real time</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.6rem;">
+        <div style="display:flex;align-items:center;gap:0.45rem;
+                padding:0.35rem 0.85rem;
+                background:var(--surface-2);
+                border:1px solid var(--border);
+                border-radius:var(--radius);">
+            <span style="width:5px;height:5px;border-radius:50%;
+                   background:var(--accent);
+                   box-shadow:0 0 8px var(--accent-glow);
+                   animation:statusPulse 2s ease-in-out infinite;"></span>
+            <span id="liveClock"
+                  style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-2);"></span>
+        </div>
+        <a href="{% url 'department_list' %}" class="btn-accent">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <rect x="1" y="1" width="4.5" height="4.5" rx="0.8" fill="currentColor" />
+                <rect x="6.5" y="1" width="4.5" height="4.5" rx="0.8" fill="currentColor" opacity=".5" />
+                <rect x="1" y="6.5" width="4.5" height="4.5" rx="0.8" fill="currentColor" opacity=".5" />
+                <rect x="6.5" y="6.5" width="4.5" height="4.5" rx="0.8" fill="currentColor" opacity=".5" />
+            </svg>
+            Departments
+        </a>
+    </div>
+</div>
+
+
+
+<div class="stat-grid">
+
+    {# ── Card 1: Total Emissions ── #}
+    <div class="admin-card anim-fade-up anim-delay-1">
+        <div class="card-shine"></div>
+        <div class="card-body-eco">
+
+            <div style="display:flex;align-items:flex-start;
+                  justify-content:space-between;margin-bottom:1.25rem;">
+                <div style="width:38px;height:38px;
+                    background:var(--accent-dim);
+                    border:1px solid rgba(57,255,20,0.15);
+                    border-radius:9px;
+                    display:flex;align-items:center;justify-content:center;">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M2 15 L5 10 L8.5 12.5 L12 7 L15.5 9.5"
+                              stroke="#39ff14" stroke-width="1.6"
+                              stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                        <circle cx="15.5" cy="9.5" r="1.8" fill="#39ff14" />
+                    </svg>
+                </div>
+                <span style="font-family:var(--font-mono);font-size:0.58rem;font-weight:600;
+                     letter-spacing:0.12em;text-transform:uppercase;
+                     padding:0.2rem 0.5rem;border-radius:3px;
+                     background:rgba(57,255,20,0.08);
+                     border:1px solid rgba(57,255,20,0.15);
+                     color:var(--accent);">LIVE</span>
+            </div>
+
+            <div style="font-family:var(--font-mono);font-size:2.2rem;font-weight:700;
+                  letter-spacing:-0.04em;color:var(--text);
+                  line-height:1;margin-bottom:0.4rem;">
+                {{ total_emissions }}
+                <span style="font-size:0.9rem;color:var(--text-2);font-weight:400;">tCO₂</span>
+            </div>
+
+            <div class="mono-label" style="margin-bottom:0.75rem;">Total Emissions</div>
+
+            {# Decorative sparkline — static SVG, no data binding #}
+            <div style="height:36px;overflow:hidden;margin-bottom:0.5rem;">
+                <svg width="100%" height="36" viewBox="0 0 200 36" preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id="emGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#39ff14" stop-opacity="0.3" />
+                            <stop offset="100%" stop-color="#39ff14" stop-opacity="0" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M0 30 L25 22 L50 26 L75 16 L100 20 L125 12 L150 18 L175 8 L200 14"
+                          fill="none" stroke="#39ff14" stroke-width="1.5"
+                          stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M0 30 L25 22 L50 26 L75 16 L100 20 L125 12 L150 18 L175 8 L200 14
+                   L200 36 L0 36 Z"
+                          fill="url(#emGrad)" />
+                </svg>
+            </div>
+
+            <span style="font-size:0.72rem;color:var(--accent);">↓ 8.3% from last month</span>
+
+        </div>
+    </div>
+
+    {# ── Card 2: Carbon Limit ── #}
+    <div class="admin-card anim-fade-up anim-delay-2">
+        <div class="card-shine"></div>
+        <div class="card-body-eco">
+
+            <div style="display:flex;align-items:flex-start;
+                  justify-content:space-between;margin-bottom:1.25rem;">
+                <div style="width:38px;height:38px;
+                    background:rgba(255,170,0,0.08);
+                    border:1px solid rgba(255,170,0,0.18);
+                    border-radius:9px;
+                    display:flex;align-items:center;justify-content:center;">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <circle cx="9" cy="9" r="6.5" stroke="#ffaa00" stroke-width="1.5" fill="none" />
+                        <path d="M9 5.5v4.5" stroke="#ffaa00" stroke-width="1.5" stroke-linecap="round" />
+                        <circle cx="9" cy="12" r="0.8" fill="#ffaa00" />
+                    </svg>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-family:var(--font-mono);font-size:1.1rem;font-weight:700;color:var(--text);">
+                        {{ limit_percentage }}<span style="font-size:0.7rem;color:var(--text-2);">%</span>
+                    </div>
+                    <div class="mono-label">of limit used</div>
+                </div>
+            </div>
+
+            <div style="font-family:var(--font-mono);font-size:1.05rem;font-weight:600;
+                  color:var(--text);margin-bottom:0.35rem;">Carbon Limit</div>
+
+            <div class="mono-label" style="margin-bottom:1rem;">Monthly emission cap progress</div>
+
+            {# Progress bar — view passes limit_bar_width and limit_bar_color as plain strings #}
+            <div style="background:var(--surface-3);border-radius:4px;
+                  height:8px;overflow:hidden;margin-bottom:0.6rem;">
+                <div id="limitBar"
+                     data-target="{{ limit_bar_width }}"
+                     style="height:100%;border-radius:4px;width:0%;
+                    background:linear-gradient(90deg,{{ limit_bar_color }},{{ limit_bar_color }}99);
+                    box-shadow:0 0 10px {{ limit_bar_color }}44;
+                    transition:width 1.2s cubic-bezier(0.16,1,0.3,1);">
+                </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-3);">0%</span>
+                <span style="font-family:var(--font-mono);font-size:0.6rem;color:{{ limit_text_color }};">
+                    {{ limit_percentage }}% used
+                </span>
+                <span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-3);">100%</span>
+            </div>
+
+            {# show_limit_warning is a plain Python bool — safe to use in {% if %} #}
+            {% if show_limit_warning %}
+            <div class="limit-warning">
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                    <path d="M5.5 1 L10 9.5 H1 Z"
+                          stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round" />
+                    <path d="M5.5 4.5v2M5.5 8h.01"
+                          stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+                </svg>
+                Approaching emission limit
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+    {# ── Card 3: Active Departments ── #}
+    <div class="admin-card anim-fade-up anim-delay-3">
+        <div class="card-shine"></div>
+        <div class="card-body-eco">
+
+            <div style="width:38px;height:38px;
+                  background:rgba(100,149,237,0.08);
+                  border:1px solid rgba(100,149,237,0.18);
+                  border-radius:9px;
+                  display:flex;align-items:center;justify-content:center;
+                  margin-bottom:1.25rem;">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M2 16V9l7-6 7 6v7H2z"
+                          stroke="#6495ED" stroke-width="1.5" fill="none" stroke-linejoin="round" />
+                    <rect x="6.5" y="11" width="2.5" height="5" rx="0.5" fill="#6495ED" />
+                    <rect x="9" y="11" width="2.5" height="5" rx="0.5" fill="#6495ED" opacity=".4" />
+                </svg>
+            </div>
+
+            <div style="font-family:var(--font-mono);font-size:2.8rem;font-weight:700;
+                  letter-spacing:-0.05em;color:var(--text);
+                  line-height:1;margin-bottom:0.4rem;">
+                {{ active_depts }}
+            </div>
+
+            <div class="mono-label" style="margin-bottom:1rem;">Active Departments</div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <a href="{% url 'department_list' %}"
+                   style="font-family:var(--font-mono);font-size:0.65rem;
+                  color:var(--text-2);text-decoration:none;
+                  display:flex;align-items:center;gap:0.3rem;transition:color 0.15s;"
+                   onmouseover="this.style.color='var(--accent)'"
+                   onmouseout="this.style.color='var(--text-2)'">
+                    View all
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"
+                              stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                    </svg>
+                </a>
+                <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--accent);
+                     padding:0.15rem 0.45rem;background:var(--accent-dim);border-radius:3px;">
+                    +{{ new_depts_this_month }} this month
+                </span>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+
+<div class="chart-row">
+
+    {# ── Emissions Trend Chart ── #}
+    <div class="admin-card anim-fade-up anim-delay-2">
+        <div class="card-shine"></div>
+
+        <div class="card-header-eco">
+            <span class="card-title-eco">Regional Emissions Trend</span>
+            {# Period buttons — each written out individually, no |split filter #}
+            <div style="display:flex;gap:2px;background:var(--surface-2);
+                  border:1px solid var(--border);border-radius:6px;padding:2px;">
+                <button class="period-btn active-period" onclick="setPeriod(this,'7D')">7D</button>
+                <button class="period-btn" onclick="setPeriod(this,'1M')">1M</button>
+                <button class="period-btn" onclick="setPeriod(this,'3M')">3M</button>
+                <button class="period-btn" onclick="setPeriod(this,'1Y')">1Y</button>
+            </div>
+        </div>
+
+        <div class="card-body-eco">
+
+            {# Legend #}
+            <div style="display:flex;gap:1.25rem;margin-bottom:1.25rem;">
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                    <div style="width:24px;height:2px;background:var(--accent);border-radius:1px;"></div>
+                    <span style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-2);">Actual</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                    <div style="width:24px;height:1px;background:rgba(255,255,255,0.25);
+                      border-top:1px dashed rgba(255,255,255,0.3);"></div>
+                    <span style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-2);">Target</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                    <div style="width:24px;height:2px;background:#6495ED;border-radius:1px;"></div>
+                    <span style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-2);">Projected</span>
+                </div>
+            </div>
+
+            {# Chart wrapper #}
+            <div style="background:var(--surface-2);border:1px solid var(--border);
+                  border-radius:var(--radius);padding:1.25rem 1rem 0.75rem;overflow:hidden;position:relative;">
+
+                {# Y-axis labels #}
+                <div style="position:absolute;left:0.5rem;top:1.25rem;bottom:0.75rem;
+                    display:flex;flex-direction:column;justify-content:space-between;">
+                    <span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-3);">120</span>
+                    <span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-3);">90</span>
+                    <span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-3);">60</span>
+                    <span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-3);">30</span>
+                    <span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-3);">0</span>
+                </div>
+
+                <svg width="100%" height="180" viewBox="0 0 500 180"
+                     preserveAspectRatio="none"
+                     style="display:block;width:calc(100% - 28px);margin-left:28px;">
+                    <defs>
+                        <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#39ff14" stop-opacity="0.25" />
+                            <stop offset="100%" stop-color="#39ff14" stop-opacity="0" />
+                        </linearGradient>
+                        <linearGradient id="projGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#6495ED" stop-opacity="0.15" />
+                            <stop offset="100%" stop-color="#6495ED" stop-opacity="0" />
+                        </linearGradient>
+                        <filter id="glowLine">
+                            <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+                            <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    {# Grid lines #}
+                    <line x1="0" y1="0" x2="500" y2="0" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+                    <line x1="0" y1="45" x2="500" y2="45" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+                    <line x1="0" y1="90" x2="500" y2="90" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+                    <line x1="0" y1="135" x2="500" y2="135" stroke="rgba(255,255,255,0.04)" stroke-width="1" />
+                    <line x1="0" y1="175" x2="500" y2="175" stroke="rgba(255,255,255,0.06)" stroke-width="1" />
+
+                    {# Target dashed line #}
+                    <line x1="0" y1="80" x2="500" y2="80"
+                          stroke="rgba(255,255,255,0.18)" stroke-width="1" stroke-dasharray="6 4" />
+
+                    {# Projected area #}
+                    <path d="M300 90 L350 75 L400 65 L450 50 L500 40 L500 175 L300 175 Z"
+                          fill="url(#projGrad)" />
+                    <path d="M300 90 L350 75 L400 65 L450 50 L500 40"
+                          fill="none" stroke="#6495ED" stroke-width="1.5"
+                          stroke-dasharray="5 3" stroke-linecap="round" />
+
+                    {# Actual area + line #}
+                    <path d="M0 150 L60 130 L120 140 L180 110 L240 120 L300 90 L300 175 L0 175 Z"
+                          fill="url(#lineGrad)" />
+                    <path d="M0 150 L60 130 L120 140 L180 110 L240 120 L300 90"
+                          fill="none" stroke="#39ff14" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round"
+                          filter="url(#glowLine)" />
+
+                    {# Data point circles #}
+                    <circle cx="0" cy="150" r="3.5" fill="#39ff14" filter="url(#glowLine)" />
+                    <circle cx="60" cy="130" r="3.5" fill="#39ff14" filter="url(#glowLine)" />
+                    <circle cx="120" cy="140" r="3.5" fill="#39ff14" filter="url(#glowLine)" />
+                    <circle cx="180" cy="110" r="3.5" fill="#39ff14" filter="url(#glowLine)" />
+                    <circle cx="240" cy="120" r="3.5" fill="#39ff14" filter="url(#glowLine)" />
+                    <circle cx="300" cy="90" r="4.5" fill="#39ff14" filter="url(#glowLine)" />
+
+                    {# NOW marker #}
+                    <line x1="300" y1="0" x2="300" y2="175"
+                          stroke="rgba(57,255,20,0.25)" stroke-width="1" stroke-dasharray="3 3" />
+                    <text x="304" y="12"
+                          font-family="IBM Plex Mono" font-size="8"
+                          fill="rgba(57,255,20,0.5)">NOW</text>
+                </svg>
+
+                {# X-axis month labels #}
+                <div style="display:flex;justify-content:space-between;
+                    padding:0.4rem 0 0;margin-left:28px;">
+                    <span style="font-family:var(--font-mono);font-size:0.58rem;color:var(--text-3);">Jan</span>
+                    <span style="font-family:var(--font-mono);font-size:0.58rem;color:var(--text-3);">Feb</span>
+                    <span style="font-family:var(--font-mono);font-size:0.58rem;color:var(--text-3);">Mar</span>
+                    <span style="font-family:var(--font-mono);font-size:0.58rem;color:var(--text-3);">Apr</span>
+                    <span style="font-family:var(--font-mono);font-size:0.58rem;color:var(--text-3);">May</span>
+                    <span style="font-family:var(--font-mono);font-size:0.58rem;
+                       color:var(--accent);font-weight:600;">Jun</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    {# ── Activity Log ── #}
+    <div class="admin-card anim-fade-up anim-delay-3">
+        <div class="card-shine"></div>
+
+        <div class="card-header-eco">
+            <span class="card-title-eco">Activity Log</span>
+            <span style="width:6px;height:6px;border-radius:50%;
+                   background:var(--accent);
+                   box-shadow:0 0 8px var(--accent-glow);
+                   animation:statusPulse 2s ease-in-out infinite;"></span>
+        </div>
+
+        <div>
+            {% for activity in recent_activities %}
+            <div class="activity-row">
+                <div class="activity-icon activity-icon-filled">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6h8M6 2.5l3.5 3.5L6 9.5"
+                              stroke="#39ff14" stroke-width="1.3"
+                              stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.15rem;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        {{ activity.description }}
+                    </div>
+                    <div style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-3);">
+                        {{ activity.timestamp }}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            {# Static placeholder rows — three written out individually, no loop tricks #}
+            <div class="activity-row">
+                <div class="activity-icon activity-icon-empty"></div>
+                <div style="flex:1;">
+                    <span class="skel" style="height:9px;width:80%;margin-bottom:6px;display:block;"></span>
+                    <span class="skel" style="height:7px;width:45%;background:var(--surface-2);display:block;"></span>
+                </div>
+            </div>
+            <div class="activity-row">
+                <div class="activity-icon activity-icon-empty"></div>
+                <div style="flex:1;">
+                    <span class="skel" style="height:9px;width:65%;margin-bottom:6px;display:block;"></span>
+                    <span class="skel" style="height:7px;width:35%;background:var(--surface-2);display:block;"></span>
+                </div>
+            </div>
+            <div class="activity-row">
+                <div class="activity-icon activity-icon-empty"></div>
+                <div style="flex:1;">
+                    <span class="skel" style="height:9px;width:75%;margin-bottom:6px;display:block;"></span>
+                    <span class="skel" style="height:7px;width:40%;background:var(--surface-2);display:block;"></span>
+                </div>
+            </div>
+            <div style="padding:1rem 1.4rem;text-align:center;">
+                <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-3);">
+                    No recent activity
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<div class="admin-card anim-fade-up anim-delay-4">
+    <div class="card-shine"></div>
+
+    <div class="card-header-eco">
+        <span class="card-title-eco">Departments at a Glance</span>
+        <a href="{% url 'department_list' %}"
+           style="font-family:var(--font-mono);font-size:0.65rem;
+              color:var(--text-2);text-decoration:none;
+              display:flex;align-items:center;gap:0.3rem;transition:color 0.15s;"
+           onmouseover="this.style.color='var(--accent)'"
+           onmouseout="this.style.color='var(--text-2)'">
+            View all
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"
+                      stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+            </svg>
+        </a>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr>
+                <th class="dept-th dept-th-first">#</th>
+                <th class="dept-th">Department</th>
+                <th class="dept-th">Location</th>
+                <th class="dept-th">Status</th>
+                <th class="dept-th dept-th-last">Emissions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dept in departments %}
+            <tr class="dept-tr">
+                <td class="dept-td dept-td-first">
+                    <span style="font-family:var(--font-mono);font-size:0.68rem;color:var(--text-3);">
+                        {{ forloop.counter }}
+                    </span>
+                </td>
+                <td class="dept-td" style="font-weight:600;">{{ dept.name }}</td>
+                <td class="dept-td" style="color:var(--text-2);">{{ dept.location|default:"—" }}</td>
+                <td class="dept-td">
+                    {% if dept.submitted %}
+                    <span class="badge-submitted">
+                        <span class="badge-dot"></span>SUBMITTED
+                    </span>
+                    {% else %}
+                    <span class="badge-pending">
+                        <span class="badge-dot"></span>PENDING
+                    </span>
+                    {% endif %}
+                </td>
+                <td class="dept-td dept-td-last">
+                    {{ dept.emissions|default:"—" }}
+                    {% if dept.emissions %}
+                    <span style="color:var(--text-3);font-weight:400;font-size:0.65rem;"> tCO₂</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            {# Three static skeleton rows, no loops or Python tricks #}
+            <tr>
+                <td class="dept-td dept-td-first">
+                    <span class="skel" style="width:16px;height:8px;display:inline-block;"></span>
+                </td>
+                <td class="dept-td">
+                    <span class="skel" style="width:120px;height:9px;display:inline-block;"></span>
+                </td>
+                <td class="dept-td">
+                    <span class="skel" style="width:80px;height:9px;background:var(--surface-2);display:inline-block;"></span>
+                </td>
+                <td class="dept-td">
+                    <span class="skel" style="width:70px;height:18px;border-radius:3px;display:inline-block;"></span>
+                </td>
+                <td class="dept-td dept-td-last">
+                    <span class="skel" style="width:50px;height:9px;display:inline-block;"></span>
+                </td>
+            </tr>
+            <tr>
+                <td class="dept-td dept-td-first">
+                    <span class="skel" style="width:16px;height:8px;display:inline-block;"></span>
+                </td>
+                <td class="dept-td">
+                    <span class="skel" style="width:90px;height:9px;display:inline-block;"></span>
+                </td>
+                <td class="dept-td">
+                    <span class="skel" style="width:60px;height:9px;background:var(--surface-2);display:inline-block;"></span>
+                </td>
+                <td class="dept-td">
+                    <span class="skel" style="width:70px;height:18px;border-radius:3px;display:inline-block;"></span>
+                </td>
+                <td class="dept-td dept-td-last">
+                    <span class="skel" style="width:40px;height:9px;display:inline-block;"></span>
+                </td>
+            </tr>
+            <tr>
+                <td class="dept-td dept-td-first" style="border-bottom:none;">
+                    <span class="skel" style="width:16px;height:8px;display:inline-block;"></span>
+                </td>
+                <td class="dept-td" style="border-bottom:none;">
+                    <span class="skel" style="width:110px;height:9px;display:inline-block;"></span>
+                </td>
+                <td class="dept-td" style="border-bottom:none;">
+                    <span class="skel" style="width:70px;height:9px;background:var(--surface-2);display:inline-block;"></span>
+                </td>
+                <td class="dept-td" style="border-bottom:none;">
+                    <span class="skel" style="width:70px;height:18px;border-radius:3px;display:inline-block;"></span>
+                </td>
+                <td class="dept-td dept-td-last" style="border-bottom:none;">
+                    <span class="skel" style="width:45px;height:9px;display:inline-block;"></span>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="5" style="padding:1.5rem;text-align:center;border-bottom:none;">
+                    <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-3);">
+                        No departments found —
+                        <a href="{% url 'department_list' %}"
+                           style="color:var(--accent);text-decoration:none;">add one →</a>
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+    /* ── Live clock ── */
+    (function tick() {
+        var el = document.getElementById('liveClock');
+        if (el) {
+            var now = new Date();
+            el.textContent =
+                now.toLocaleTimeString('en-GB', { hour12: false }) +
+                ' \u00b7 ' +
+                now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+        setTimeout(tick, 1000);
+    })();
+
+    /* ── Animate progress bar on load ── */
+    document.addEventListener('DOMContentLoaded', function () {
+        var bar = document.getElementById('limitBar');
+        if (bar) {
+            var target = bar.getAttribute('data-target') || '0%';
+            bar.style.width = '0%';
+            setTimeout(function () { bar.style.width = target; }, 150);
+        }
+    });
+
+    /* ── Period toggle ── */
+    function setPeriod(btn, period) {
+        document.querySelectorAll('.period-btn').forEach(function (b) {
+            b.classList.remove('active-period');
+        });
+        btn.classList.add('active-period');
+        /* Hook into your chart logic here */
+        console.log('Period selected:', period);
+    }
+</script>
+{% endblock %}

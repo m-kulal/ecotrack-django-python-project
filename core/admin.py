@@ -1,8 +1,6 @@
 from django.contrib import admin
-from .models import Organization, UserProfile, Department, EmissionLog
+from .models import Organization, UserProfile
 
-# Register your models here so they appear in the Admin dashboard
+# Register your models here.
 admin.site.register(Organization)
 admin.site.register(UserProfile)
-admin.site.register(Department)
-admin.site.register(EmissionLog)

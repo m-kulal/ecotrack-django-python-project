@@ -1,9 +1,16 @@
 {
   "ExpandedNodes": [
     "",
+    "\\core",
+    "\\core\\migrations",
+    "\\core\\migrations\\__pycache__",
+    "\\core\\templates",
+    "\\core\\templates\\core",
     "\\ecotrack",
-    "\\ecotrack\\ecotrack"
+    "\\ecotrack\\ecotrack",
+    "\\ecotrack\\ecotrack\\__pycache__",
+    "\\ecotrack_main"
   ],
-  "SelectedNode": "\\ecotrack\\manage.py",
+  "SelectedNode": "\\core\\templates\\core\\departments.html",
   "PreviewInSolutionExplorer": false
 }

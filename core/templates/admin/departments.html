@@ -1,0 +1,762 @@
+﻿{% extends 'admin/base_admin.html' %}
+{% load static %}
+
+{% block content %}
+
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    /* ── Tokens ─────────────────────────────────────── */
+    .dp-root {
+        --bg: #121212;
+        --surf: #1c1c1c;
+        --surf2: #222222;
+        --surf3: #2a2a2a;
+        --border: rgba(255,255,255,0.07);
+        --border2: rgba(255,255,255,0.12);
+        --accent: #39ff14;
+        --accent-dim: rgba(57,255,20,0.10);
+        --accent-glow: rgba(57,255,20,0.30);
+        --accent-bdr: rgba(57,255,20,0.22);
+        --txt1: #f1f1f1;
+        --txt2: #909090;
+        --txt3: #555;
+        --radius: 12px;
+        --radius-sm: 8px;
+        --ease: 0.2s cubic-bezier(.4,0,.2,1);
+        font-family: 'Space Grotesk', sans-serif;
+        color: var(--txt1);
+    }
+
+    /* ── Page wrapper ───────────────────────────────── */
+    .dp-root {
+        padding: 2rem 2.25rem 5rem;
+        max-width: 1300px;
+        margin: 0 auto;
+        animation: dp-in .45s ease both;
+    }
+
+    @keyframes dp-in {
+        from {
+            opacity: 0;
+            transform: translateY(14px)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0)
+        }
+    }
+
+    /* ── Flash messages ─────────────────────────────── */
+    .dp-flash {
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+        padding: .75rem 1.1rem;
+        border-radius: var(--radius-sm);
+        font-size: .85rem;
+        font-weight: 500;
+        margin-bottom: 1.5rem;
+        border: 1px solid;
+    }
+
+        .dp-flash.success {
+            background: rgba(57,255,20,.08);
+            border-color: var(--accent-bdr);
+            color: #70ff45;
+        }
+
+        .dp-flash.error {
+            background: rgba(255,70,70,.08);
+            border-color: rgba(255,70,70,.25);
+            color: #ff8080;
+        }
+
+        .dp-flash svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+        }
+
+    /* ── Page header ────────────────────────────────── */
+    .dp-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 2.25rem;
+    }
+
+    .dp-header-left {
+        display: flex;
+        flex-direction: column;
+        gap: .3rem;
+    }
+
+    .dp-eyebrow {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .68rem;
+        letter-spacing: .18em;
+        text-transform: uppercase;
+        color: var(--accent);
+        opacity: .75;
+    }
+
+    .dp-title {
+        font-size: 1.85rem;
+        font-weight: 700;
+        letter-spacing: -.025em;
+        margin: 0;
+        line-height: 1.15;
+    }
+
+        .dp-title span {
+            color: var(--accent);
+        }
+
+    .dp-subtitle {
+        font-size: .85rem;
+        color: var(--txt2);
+        margin: 0;
+    }
+
+    .dp-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-bdr);
+        color: var(--accent);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .72rem;
+        padding: .4rem .9rem;
+        border-radius: 100px;
+        white-space: nowrap;
+    }
+
+    .dp-badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 6px var(--accent-glow);
+        animation: dp-blink 2.2s ease-in-out infinite;
+    }
+
+    @keyframes dp-blink {
+        0%,100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: .4;
+            transform: scale(.75);
+        }
+    }
+
+    /* ── Card base ──────────────────────────────────── */
+    .dp-card {
+        background: var(--surf);
+        border: 1px solid var(--border2);
+        border-radius: var(--radius);
+        overflow: hidden;
+    }
+
+    .dp-card-head {
+        display: flex;
+        align-items: center;
+        gap: .7rem;
+        padding: 1.35rem 1.6rem 1.1rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .dp-card-icon {
+        width: 34px;
+        height: 34px;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-bdr);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+        .dp-card-icon svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--accent);
+        }
+
+    .dp-card-htxt {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .dp-card-htitle {
+        font-size: .92rem;
+        font-weight: 600;
+        color: var(--txt1);
+        margin: 0;
+    }
+
+    .dp-card-hdesc {
+        font-size: .76rem;
+        color: var(--txt3);
+        margin: 0;
+    }
+
+    /* ── Two-column layout ──────────────────────────── */
+    .dp-layout {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 1.75rem;
+        align-items: start;
+    }
+
+    .dp-form-wrap {
+        position: sticky;
+        top: 1.5rem;
+    }
+
+    /* ── Form body ──────────────────────────────────── */
+    .dp-form-body {
+        padding: 1.5rem 1.6rem 1.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
+    }
+
+    .dp-field {
+        display: flex;
+        flex-direction: column;
+        gap: .42rem;
+    }
+
+    .dp-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .68rem;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: var(--txt2);
+    }
+
+        .dp-label em {
+            color: var(--accent);
+            font-style: normal;
+            margin-left: 2px;
+        }
+
+    .dp-input {
+        background: var(--surf2);
+        border: 1px solid var(--border2);
+        border-radius: var(--radius-sm);
+        color: var(--txt1);
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: .88rem;
+        padding: .68rem .95rem;
+        width: 100%;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color var(--ease), box-shadow var(--ease), background var(--ease);
+        -webkit-appearance: none;
+    }
+
+        .dp-input::placeholder {
+            color: var(--txt3);
+            font-size: .83rem;
+        }
+
+        .dp-input:focus {
+            border-color: var(--accent-bdr);
+            background: var(--surf3);
+            box-shadow: 0 0 0 3px rgba(57,255,20,.07), inset 0 0 10px rgba(57,255,20,.025);
+        }
+
+    .dp-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: .85rem;
+    }
+
+    /* ── Submit btn ─────────────────────────────────── */
+    .dp-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        width: 100%;
+        padding: .8rem 1rem;
+        background: var(--accent);
+        color: #050505;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: .9rem;
+        font-weight: 700;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        margin-top: .3rem;
+        transition: opacity var(--ease), box-shadow var(--ease), transform var(--ease);
+        letter-spacing: .01em;
+    }
+
+        .dp-btn svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+        }
+
+        .dp-btn:hover {
+            opacity: .88;
+            box-shadow: 0 4px 22px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        .dp-btn:active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+    /* ── Right panel ────────────────────────────────── */
+    .dp-right {
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+    }
+
+    .dp-section-bar {
+        display: flex;
+        align-items: center;
+        gap: .8rem;
+    }
+
+    .dp-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--txt1);
+        margin: 0;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+    }
+
+        .dp-section-title::before {
+            content: '';
+            display: block;
+            width: 3px;
+            height: 17px;
+            background: var(--accent);
+            border-radius: 2px;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+    .dp-section-line {
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    /* ── Dept card grid ─────────────────────────────── */
+    .dp-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+        gap: 1rem;
+    }
+
+    .dp-dept-card {
+        background: var(--surf);
+        border: 1px solid var(--border2);
+        border-radius: var(--radius);
+        padding: 1.3rem 1.4rem 1.2rem;
+        display: flex;
+        flex-direction: column;
+        gap: .8rem;
+        transition: border-color var(--ease), transform var(--ease), box-shadow var(--ease);
+        animation: dp-cin .4s ease both;
+    }
+
+    @keyframes dp-cin {
+        from {
+            opacity: 0;
+            transform: translateY(8px)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0)
+        }
+    }
+
+    .dp-dept-card:hover {
+        border-color: var(--accent-bdr);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(0,0,0,.4), 0 0 18px rgba(57,255,20,.06);
+    }
+
+    .dp-dc-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .6rem;
+    }
+
+    .dp-dc-avatar {
+        width: 40px;
+        height: 40px;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-bdr);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .8rem;
+        font-weight: 500;
+        color: var(--accent);
+        letter-spacing: .04em;
+    }
+
+    .dp-dc-pill {
+        display: flex;
+        align-items: center;
+        gap: .3rem;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-bdr);
+        color: var(--accent);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .62rem;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+        padding: .22rem .6rem;
+        border-radius: 100px;
+    }
+
+    .dp-dc-pill-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--accent);
+    }
+
+    .dp-dc-name {
+        font-size: .98rem;
+        font-weight: 600;
+        color: var(--txt1);
+        margin: 0;
+        letter-spacing: -.01em;
+    }
+
+    .dp-dc-divider {
+        height: 1px;
+        background: var(--border);
+    }
+
+    .dp-dc-meta {
+        display: flex;
+        flex-direction: column;
+        gap: .45rem;
+    }
+
+    .dp-dc-row {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        font-size: .8rem;
+        color: var(--txt2);
+    }
+
+        .dp-dc-row svg {
+            width: 13px;
+            height: 13px;
+            stroke: var(--txt3);
+            flex-shrink: 0;
+        }
+
+    .dp-dc-val {
+        color: var(--txt1);
+        font-weight: 500;
+    }
+
+    /* ── Empty state ────────────────────────────────── */
+    .dp-empty {
+        grid-column: 1/-1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 4rem 2rem;
+        background: var(--surf);
+        border: 1px dashed var(--border2);
+        border-radius: var(--radius);
+        text-align: center;
+        animation: dp-cin .5s ease both;
+    }
+
+    .dp-empty-ring {
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-bdr);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+        .dp-empty-ring::after {
+            content: '';
+            position: absolute;
+            inset: -9px;
+            border-radius: 50%;
+            border: 1px dashed var(--accent-bdr);
+            opacity: .5;
+            animation: dp-spin 12s linear infinite;
+        }
+
+    @keyframes dp-spin {
+        to {
+            transform: rotate(360deg)
+        }
+    }
+
+    .dp-empty-ring svg {
+        width: 28px;
+        height: 28px;
+        stroke: var(--accent);
+        opacity: .8;
+    }
+
+    .dp-empty-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--txt1);
+        margin: 0;
+    }
+
+    .dp-empty-desc {
+        font-size: .83rem;
+        color: var(--txt3);
+        max-width: 300px;
+        line-height: 1.65;
+        margin: 0;
+    }
+
+    /* ── Responsive ─────────────────────────────────── */
+    @media(max-width:1000px) {
+        .dp-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .dp-form-wrap {
+            position: static;
+        }
+    }
+
+    @media(max-width:640px) {
+        .dp-root {
+            padding: 1.25rem 1rem 3rem;
+        }
+
+        .dp-title {
+            font-size: 1.45rem;
+        }
+
+        .dp-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .dp-row {
+            grid-template-columns: 1fr;
+        }
+
+        .dp-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+
+<div class="dp-root">
+
+    {# Flash messages #}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="dp-flash {{ message.tags }}">
+        {% if 'success' in message.tags %}
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        {% else %}
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        {% endif %}
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {# Page header #}
+    <div class="dp-header">
+        <div class="dp-header-left">
+            <p class="dp-eyebrow">EcoTrack &nbsp;/&nbsp; Admin</p>
+            <h1 class="dp-title">Department <span>Management</span></h1>
+            <p class="dp-subtitle">Manage all departments and their managers</p>
+        </div>
+        <div class="dp-badge">
+            <span class="dp-badge-dot"></span>
+            {{ departments|length }}&nbsp;Department{{ departments|length|pluralize }}&nbsp;Registered
+        </div>
+    </div>
+
+    {# Two-column layout #}
+    <div class="dp-layout">
+
+        {# FORM CARD #}
+        <div class="dp-form-wrap">
+            <div class="dp-card">
+
+                <div class="dp-card-head">
+                    <div class="dp-card-icon">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                    </div>
+                    <div class="dp-card-htxt">
+                        <p class="dp-card-htitle">Add Department</p>
+                        <p class="dp-card-hdesc">Register a new organisational unit</p>
+                    </div>
+                </div>
+
+                <form class="dp-form-body" method="POST" action="{% url 'department_list' %}">
+                    {% csrf_token %}
+
+                    <div class="dp-field">
+                        <label class="dp-label" for="dp-name">Department Name <em>*</em></label>
+                        <input class="dp-input" type="text" id="dp-name" name="name"
+                               placeholder="e.g. Engineering, Finance…" required autocomplete="off">
+                    </div>
+
+                    <div class="dp-field">
+                        <label class="dp-label" for="dp-loc">Location <em>*</em></label>
+                        <input class="dp-input" type="text" id="dp-loc" name="location"
+                               placeholder="e.g. Mumbai HQ, Remote – Asia" required autocomplete="off">
+                    </div>
+
+                    <div class="dp-row">
+                        <div class="dp-field">
+                            <label class="dp-label" for="dp-uname">Manager Username <em>*</em></label>
+                            <input class="dp-input" type="text" id="dp-uname" name="manager_username"
+                                   placeholder="username" required autocomplete="off">
+                        </div>
+                        <div class="dp-field">
+                            <label class="dp-label" for="dp-pass">Manager Password <em>*</em></label>
+                            <input class="dp-input" type="password" id="dp-pass" name="manager_password"
+                                   placeholder="••••••••" required autocomplete="new-password">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="dp-btn">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Add Department
+                    </button>
+
+                </form>
+            </div>
+        </div>
+
+        {# RIGHT PANEL — department cards #}
+        <div class="dp-right">
+
+            <div class="dp-section-bar">
+                <h2 class="dp-section-title">Registered Departments</h2>
+                <div class="dp-section-line"></div>
+            </div>
+
+            <div class="dp-grid">
+
+                {% if departments %}
+                {% for dept in departments %}
+                <div class="dp-dept-card" style="animation-delay:{{ forloop.counter0 }}00ms">
+
+                    <div class="dp-dc-top">
+                        <div class="dp-dc-avatar">{{ dept.name|slice:":2"|upper }}</div>
+                        <span class="dp-dc-pill">
+                            <span class="dp-dc-pill-dot"></span>Active
+                        </span>
+                    </div>
+
+                    <p class="dp-dc-name">{{ dept.name }}</p>
+
+                    <div class="dp-dc-divider"></div>
+
+                    <div class="dp-dc-meta">
+
+                        <div class="dp-dc-row">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                            </svg>
+                            <span class="dp-dc-val">{{ dept.location }}</span>
+                        </div>
+
+                        <div class="dp-dc-row">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                            </svg>
+                            <span>Manager:&nbsp;</span>
+                            <span class="dept-meta-value">{{ dept.managed_by.username }}</span>
+                        </div>
+
+                        <div class="dp-dc-row">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                            </svg>
+                            <span>Added:&nbsp;</span>
+                            <span class="dp-dc-val">{{ dept.created_at|date:"d M Y" }}</span>
+                        </div>
+
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% else %}
+                <div class="dp-empty">
+                    <div class="dp-empty-ring">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                        </svg>
+                    </div>
+                    <p class="dp-empty-title">No departments available</p>
+                    <p class="dp-empty-desc">
+                        No departments have been added yet. Use the form on the
+                        left to register your first department.
+                    </p>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
