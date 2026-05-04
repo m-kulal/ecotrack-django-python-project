@@ -214,7 +214,8 @@
 
 <div class="page-header anim-fade-up">
     <div>
-        <div class="page-eyebrow">Admin Dashboard</div>
+        {# org_name comes from the dashboard view context — shows the logged-in admin's org #}
+        <div class="page-eyebrow">{{ org_name|default:"EcoTrack" }} &nbsp;·&nbsp; Admin Dashboard</div>
         <h1 class="page-title">Dashboard Overview</h1>
         <p class="page-subtitle">Monitor your organization's carbon footprint in real time</p>
     </div>
@@ -231,6 +232,25 @@
             <span id="liveClock"
                   style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-2);"></span>
         </div>
+        {# Edit Organisation button — links to the new edit_organization view #}
+        <a href="{% url 'edit_organization' %}"
+           style="display:inline-flex;align-items:center;gap:0.4rem;
+                  padding:0.35rem 0.85rem;
+                  background:transparent;
+                  border:1px solid var(--border);
+                  border-radius:var(--radius);
+                  font-family:var(--font-mono);font-size:0.65rem;
+                  color:var(--text-2);text-decoration:none;
+                  transition:border-color 0.15s,color 0.15s;"
+           onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+           onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)'">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Edit Org
+        </a>
         <a href="{% url 'department_list' %}" class="btn-accent">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <rect x="1" y="1" width="4.5" height="4.5" rx="0.8" fill="currentColor" />

@@ -1,0 +1,659 @@
+﻿{% extends 'admin/base_admin.html' %}
+{% load static %}
+
+{% block page_title %}Edit Organisation{% endblock %}
+{% block breadcrumb %}Edit Organisation{% endblock %}
+
+{% block content %}
+
+<style>
+    /*
+     * All styles scoped to .eo-root — zero bleed into base_admin.html.
+     * Uses the same CSS variable names as the rest of the admin UI.
+     */
+
+    .eo-root {
+        min-height: calc(100vh - 60px);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 2.75rem 1.25rem 5rem;
+        box-sizing: border-box;
+        animation: eo-in .4s cubic-bezier(.4,0,.2,1) both;
+    }
+
+    @keyframes eo-in {
+        from {
+            opacity: 0;
+            transform: translateY(14px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .eo-wrap {
+        width: 100%;
+        max-width: 580px;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    /* ── Breadcrumb ──────────────────────────────────── */
+    .eo-crumb {
+        display: flex;
+        align-items: center;
+        gap: .45rem;
+        font-family: var(--font-mono);
+        font-size: .65rem;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        margin-bottom: 1.4rem;
+    }
+
+        .eo-crumb a {
+            color: var(--text-3);
+            text-decoration: none;
+            transition: color .15s;
+        }
+
+            .eo-crumb a:hover {
+                color: var(--accent);
+            }
+
+    .eo-crumb-sep {
+        opacity: .45;
+    }
+
+    .eo-crumb-current {
+        color: var(--accent);
+        opacity: .8;
+    }
+
+    /* ── Card ────────────────────────────────────────── */
+    .eo-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: 0 4px 32px rgba(0,0,0,.35);
+        transition: box-shadow .2s;
+    }
+
+        .eo-card:hover {
+            box-shadow: 0 6px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(57,255,20,.12);
+        }
+
+    /* ── Card header ─────────────────────────────────── */
+    .eo-card-header {
+        display: flex;
+        align-items: center;
+        gap: .9rem;
+        padding: 1.5rem 1.75rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+    }
+
+        /* subtle radial glow sweep */
+        .eo-card-header::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(57,255,20,.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+    .eo-icon {
+        width: 42px;
+        height: 42px;
+        background: var(--accent-dim);
+        border: 1px solid rgba(57,255,20,.22);
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 0 14px rgba(57,255,20,.08);
+    }
+
+        .eo-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--accent);
+        }
+
+    .eo-header-txt {
+        display: flex;
+        flex-direction: column;
+        gap: .2rem;
+    }
+
+    .eo-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: -.02em;
+        color: var(--text);
+        margin: 0;
+    }
+
+        .eo-title span {
+            color: var(--accent);
+        }
+
+    .eo-subtitle {
+        font-size: .78rem;
+        color: var(--text-3);
+        margin: 0;
+    }
+
+    /* current org name pill shown top-right of header */
+    .eo-org-pill {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        background: var(--accent-dim);
+        border: 1px solid rgba(57,255,20,.2);
+        color: var(--accent);
+        font-family: var(--font-mono);
+        font-size: .65rem;
+        letter-spacing: .06em;
+        padding: .28rem .7rem;
+        border-radius: 100px;
+        white-space: nowrap;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .eo-pill-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+        box-shadow: 0 0 5px var(--accent-glow);
+        animation: eoPulse 2.2s ease-in-out infinite;
+    }
+
+    @keyframes eoPulse {
+        0%,100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: .4;
+            transform: scale(.75);
+        }
+    }
+
+    /* ── Flash messages ──────────────────────────────── */
+    .eo-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: .6rem;
+        padding: .75rem 1rem;
+        border-radius: 7px;
+        font-size: .84rem;
+        font-weight: 500;
+        border: 1px solid;
+        line-height: 1.5;
+        margin: 1rem 1.75rem 0;
+    }
+
+        .eo-alert svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .eo-alert.success {
+            background: rgba(57,255,20,.07);
+            border-color: rgba(57,255,20,.22);
+            color: #70ff45;
+        }
+
+        .eo-alert.error {
+            background: rgba(248,113,113,.07);
+            border-color: rgba(248,113,113,.25);
+            color: #fca5a5;
+        }
+
+    /* ── Form body ───────────────────────────────────── */
+    .eo-form-body {
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    /* Field wrapper */
+    .eo-field {
+        display: flex;
+        flex-direction: column;
+        gap: .42rem;
+    }
+
+    /* Label */
+    .eo-label {
+        font-family: var(--font-mono);
+        font-size: .65rem;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: var(--text-2);
+        display: flex;
+        align-items: center;
+        gap: .38rem;
+    }
+
+        .eo-label svg {
+            width: 11px;
+            height: 11px;
+            stroke: var(--text-3);
+        }
+
+        .eo-label em {
+            color: var(--accent);
+            font-style: normal;
+        }
+
+    /* Input — mirrors Bootstrap bg-dark look without Bootstrap dependency */
+    .eo-input {
+        background: var(--surface-2) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 7px !important;
+        color: var(--text) !important;
+        font-family: inherit;
+        font-size: .9rem;
+        padding: .68rem 1rem !important;
+        width: 100%;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color .2s, box-shadow .2s, background .2s !important;
+        -webkit-appearance: none;
+    }
+
+        .eo-input::placeholder {
+            color: var(--text-3) !important;
+            font-size: .85rem;
+        }
+
+        .eo-input:focus {
+            border-color: rgba(57,255,20,.3) !important;
+            background: var(--surface-3) !important;
+            box-shadow: 0 0 0 3px rgba(57,255,20,.07), inset 0 0 12px rgba(57,255,20,.025) !important;
+            color: var(--text) !important;
+        }
+
+    /* Field hint */
+    .eo-hint {
+        font-size: .72rem;
+        color: var(--text-3);
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+    }
+
+        .eo-hint svg {
+            width: 10px;
+            height: 10px;
+            stroke: var(--text-3);
+            flex-shrink: 0;
+        }
+
+    /* 2-col row (name + country) */
+    .eo-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    /* Divider */
+    .eo-divider {
+        height: 1px;
+        background: var(--border);
+        margin: .1rem 0;
+    }
+
+    /* ── Action buttons ──────────────────────────────── */
+    .eo-actions {
+        display: flex;
+        align-items: center;
+        gap: .7rem;
+    }
+
+    .eo-btn-save {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .5rem;
+        padding: .76rem 1rem;
+        background: var(--accent);
+        color: #050505;
+        font-family: inherit;
+        font-size: .9rem;
+        font-weight: 700;
+        border: none;
+        border-radius: 7px;
+        cursor: pointer;
+        letter-spacing: .01em;
+        white-space: nowrap;
+        transition: opacity .2s, box-shadow .2s, transform .2s;
+        text-decoration: none;
+    }
+
+        .eo-btn-save svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+        }
+
+        .eo-btn-save:hover {
+            opacity: .87;
+            box-shadow: 0 4px 22px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        .eo-btn-save:active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+    .eo-btn-cancel {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .42rem;
+        padding: .76rem 1.1rem;
+        background: transparent;
+        color: var(--text-2);
+        font-family: inherit;
+        font-size: .9rem;
+        font-weight: 500;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        cursor: pointer;
+        white-space: nowrap;
+        text-decoration: none;
+        transition: border-color .2s, color .2s, background .2s;
+    }
+
+        .eo-btn-cancel svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .eo-btn-cancel:hover {
+            border-color: rgba(248,113,113,.3);
+            color: #fca5a5;
+            background: rgba(248,113,113,.05);
+        }
+
+    /* ── Card footer ─────────────────────────────────── */
+    .eo-footer {
+        padding: .8rem 1.75rem;
+        border-top: 1px solid var(--border);
+        background: rgba(255,255,255,.012);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .eo-footer-note {
+        font-family: var(--font-mono);
+        font-size: .65rem;
+        color: var(--text-3);
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+    }
+
+        .eo-footer-note svg {
+            width: 11px;
+            height: 11px;
+            stroke: var(--text-3);
+        }
+
+    .eo-footer-id {
+        font-family: var(--font-mono);
+        font-size: .65rem;
+        color: var(--text-3);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        padding: .18rem .52rem;
+        border-radius: 4px;
+    }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 600px) {
+        .eo-root {
+            padding: 1.5rem .75rem 3rem;
+        }
+
+        .eo-card-header {
+            padding: 1.25rem 1.25rem 1rem;
+        }
+
+        .eo-form-body {
+            padding: 1.25rem;
+            gap: 1rem;
+        }
+
+        .eo-org-pill {
+            display: none;
+        }
+
+        .eo-row {
+            grid-template-columns: 1fr;
+        }
+
+        .eo-actions {
+            flex-direction: column-reverse;
+        }
+
+        .eo-btn-cancel {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<div class="eo-root">
+    <div class="eo-wrap">
+
+        {# ── Breadcrumb ─────────────────────────────────── #}
+        <nav class="eo-crumb" aria-label="breadcrumb">
+            <a href="{% url 'dashboard' %}">Dashboard</a>
+            <span class="eo-crumb-sep">/</span>
+            <span class="eo-crumb-current">Edit Organisation</span>
+        </nav>
+
+        {# ── Card ───────────────────────────────────────── #}
+        <div class="eo-card">
+
+            {# Header #}
+            <div class="eo-card-header">
+                <div class="eo-icon">
+                    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18
+                     M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5
+                     m3-6H15m-1.5 3H15m-1.5 3H15
+                     M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75
+                     c.621 0 1.125.504 1.125 1.125V21" />
+                    </svg>
+                </div>
+                <div class="eo-header-txt">
+                    <h1 class="eo-title">Edit <span>Organisation</span></h1>
+                    <p class="eo-subtitle">Update your organisation's profile details</p>
+                </div>
+                {# Live pill showing the current name so context isn't lost #}
+                <span class="eo-org-pill">
+                    <span class="eo-pill-dot"></span>
+                    {{ org.name }}
+                </span>
+            </div>
+
+            {# Django flash messages — rendered inside card, above the form #}
+            {% if messages %}
+            {% for message in messages %}
+            <div class="eo-alert {{ message.tags }}">
+                {% if 'success' in message.tags %}
+                <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {% else %}
+                <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+                {% endif %}
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+           
+                <form class="eo-form-body" method="POST" action="">
+                    {% csrf_token %}
+
+                    {# Organisation Name + Country — side by side on wide screens #}
+                    <div class="eo-row">
+
+                        <div class="eo-field">
+                            <label class="eo-label" for="eo-name">
+                                <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18" />
+                                </svg>
+                                Organisation Name <em>*</em>
+                            </label>
+                            <input class="form-control bg-dark text-white border-success eo-input"
+                                   type="text"
+                                   id="eo-name"
+                                   name="name"
+                                   value="{{ org.name }}"
+                                   placeholder="e.g. Acme Corp"
+                                   required
+                                   autocomplete="organization">
+                            <span class="eo-hint">
+                                <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0
+                         001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Shown in the sidebar and all reports.
+                            </span>
+                        </div>
+
+                        <div class="eo-field">
+                            <label class="eo-label" for="eo-country">
+                                <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                                </svg>
+                                Country / Region
+                            </label>
+                            <input class="form-control bg-dark text-white border-success eo-input"
+                                   type="text"
+                                   id="eo-country"
+                                   name="country"
+                                   value="{{ org.country|default:'' }}"
+                                   placeholder="e.g. India, United Kingdom"
+                                   autocomplete="country-name">
+                            <span class="eo-hint">
+                                <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0
+                         001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Used for regulatory reporting.
+                            </span>
+                        </div>
+
+                    </div>
+
+                    {# Industry field — full width #}
+                    <div class="eo-field">
+                        <label class="eo-label" for="eo-industry">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M20.25 14.15v4.073a2.25 2.25 0 01-2.25 2.25h-12a2.25 2.25 0
+                       01-2.25-2.25V6a2.25 2.25 0 012.25-2.25h4.5" />
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M18 2.25l3 3-7.5 7.5-3 .75.75-3L18 2.25z" />
+                            </svg>
+                            Industry
+                        </label>
+                        <input class="form-control bg-dark text-white border-success eo-input"
+                               type="text"
+                               id="eo-industry"
+                               name="industry"
+                               value="{{ org.industry|default:'' }}"
+                               placeholder="e.g. Manufacturing, Technology, Healthcare"
+                               autocomplete="off">
+                        <span class="eo-hint">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0
+                       001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Helps benchmark emissions against your sector.
+                        </span>
+                    </div>
+
+                    <div class="eo-divider"></div>
+
+                    {# Action buttons #}
+                    <div class="eo-actions">
+                        <a href="{% url 'dashboard' %}" class="eo-btn-cancel">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Cancel
+                        </a>
+                        <button type="submit" class="eo-btn-save">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Save Changes
+                        </button>
+                    </div>
+
+                </form>
+
+                {# Card footer — metadata #}
+                <div class="eo-footer">
+                    <span class="eo-footer-note">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Created: {{ org.created_at|date:"d M Y" }}
+                    </span>
+                    <span class="eo-footer-id">Org ID #{{ org.id }}</span>
+                </div>
+
+        </div>{# /eo-card #}
+
+    </div>{# /eo-wrap #}
+</div>{# /eo-root #}
+
+{% endblock %}

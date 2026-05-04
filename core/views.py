@@ -107,7 +107,31 @@ def dashboard(request):
         return redirect('branch_dashboard')
 
     admin_profile = getattr(request.user, 'userprofile', None)
-    return render(request, 'admin/dashboard.html', {'admin_profile': admin_profile})
+
+    # ── Branding: resolve organisation name for header/sidebar ────
+    # Passed as 'org_name' so base_admin.html and dashboard.html can
+    # both reference {{ org_name }} without extra template tags.
+    org_name = admin_profile.organization.name if admin_profile else "EcoTrack"
+
+    # ── Departments for the "at a glance" table ───────────────────
+    departments = (
+        Department.objects.filter(organization=admin_profile.organization)
+        if admin_profile else Department.objects.none()
+    )
+
+    return render(request, 'admin/dashboard.html', {
+        'admin_profile': admin_profile,
+        'org_name':      org_name,
+        'departments':   departments,
+        # Stat placeholders — replace with real aggregations later
+        'total_emissions':   0,
+        'limit_percentage':  0,
+        'limit_bar_width':   '0%',
+        'limit_bar_color':   '#39ff14',
+        'limit_text_color':  'var(--accent)',
+        'show_limit_warning': False,
+        'recent_activities': [],
+    })
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -174,32 +198,42 @@ def manage_departments(request):
         if missing:
             messages.error(request, f"Missing required fields: {', '.join(missing)}")
         else:
-            try:
-                # FIX (e): Atomic transaction — both records save or neither does
-                with transaction.atomic():
-                    # Create the manager login account
-                    # create_user() hashes the password correctly (FIX for login readiness)
-                    # username = email so the manager logs in with their email address
-                    new_user = User.objects.create_user(
-                        username = email,   # FIX (a+b): was receiving "" because the
-                        email    = email,   #            HTML sent 'manager_username', not 'email'
-                        password = password,
-                    )
+            # ── Duplicate-email guard ──────────────────────────────
+            # Prevents "UNIQUE constraint failed" crash when the email
+            # is already used as a Django username by another manager.
+            if User.objects.filter(username=email).exists():
+                messages.error(
+                    request,
+                    f"This email is already registered. "
+                    f"Please use a different email address for the manager account."
+                )
+            else:
+                try:
+                    # FIX (e): Atomic transaction — both records save or neither does
+                    with transaction.atomic():
+                        # Create the manager login account
+                        # create_user() hashes the password correctly (FIX for login readiness)
+                        # username = email so the manager logs in with their email address
+                        new_user = User.objects.create_user(
+                            username = email,   # FIX (a+b): was receiving "" because the
+                            email    = email,   #            HTML sent 'manager_username', not 'email'
+                            password = password,
+                        )
 
-                    # Create the department, linked to the manager and organisation
-                    Department.objects.create(
-                        name         = name,
-                        location     = location,
-                        organization = admin_profile.organization,
-                        managed_by   = new_user,
-                    )
+                        # Create the department, linked to the manager and organisation
+                        Department.objects.create(
+                            name         = name,
+                            location     = location,
+                            organization = admin_profile.organization,
+                            managed_by   = new_user,
+                        )
 
-                messages.success(request, f"Department '{name}' and manager account created!")
-                return redirect('department_list')
+                    messages.success(request, f"Department '{name}' and manager account created!")
+                    return redirect('department_list')
 
-            except Exception as e:
-                # Shows the real Django/DB error in the UI during development
-                messages.error(request, f"Database Error: {e}")
+                except Exception as e:
+                    # Shows the real Django/DB error in the UI during development
+                    messages.error(request, f"Database Error: {e}")
 
     # ── GET: Search / Filter ───────────────────────────────────────
     # FIX (f): read params AND pass them back so {{ search_query }} works in template
@@ -223,6 +257,7 @@ def manage_departments(request):
         'departments':    departments,
         'search_query':   search_query,   # keeps value in search box after reload
         'location_query': location_query, # keeps value in location box after reload
+        'org_name':       admin_profile.organization.name,  # branding in sidebar/header
     })
 
 
@@ -268,3 +303,39 @@ def delete_department(request, dept_id):
         return redirect('department_list')
 
     return render(request, 'admin/delete_confirm.html', {'dept': dept})
+
+
+# ─────────────────────────────────────────────────────────────────
+# 10. Edit Organisation
+#     Allows the logged-in Admin to update their Organisation's
+#     name and country/location field.
+# ─────────────────────────────────────────────────────────────────
+@login_required
+def edit_organization(request):
+    try:
+        admin_profile = request.user.userprofile
+    except UserProfile.DoesNotExist:
+        messages.error(request, "No UserProfile found for your account.")
+        return redirect('dashboard')
+
+    org = admin_profile.organization   # the Organisation this admin owns
+
+    if request.method == 'POST':
+        new_name     = request.POST.get('name', '').strip()
+        new_country  = request.POST.get('country', '').strip()
+        new_industry = request.POST.get('industry', '').strip()
+
+        if not new_name:
+            messages.error(request, "Organisation name cannot be empty.")
+        else:
+            org.name     = new_name
+            org.country  = new_country
+            org.industry = new_industry
+            org.save()
+            messages.success(request, f"Organisation updated to '{org.name}'.")
+            return redirect('dashboard')
+
+    return render(request, 'admin/edit_organization.html', {
+        'org':      org,
+        'org_name': org.name,   # keeps sidebar consistent even before save
+    })

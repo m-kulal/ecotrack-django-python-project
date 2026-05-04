@@ -18,4 +18,7 @@ urlpatterns = [
     path('branch/dashboard/', views.branch_dashboard, name='branch_dashboard'),
     path('dashboard/departments/edit/<int:dept_id>/', views.edit_department, name='edit_department'),
     path('dashboard/departments/delete/<int:dept_id>/', views.delete_department, name='delete_department'),
+
+    # Organisation settings — Admin can rename/update their org
+    path('dashboard/organization/edit/', views.edit_organization, name='edit_organization'),
 ]
