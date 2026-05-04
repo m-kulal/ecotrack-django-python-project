@@ -3,14 +3,15 @@
     "",
     "\\core",
     "\\core\\migrations",
-    "\\core\\migrations\\__pycache__",
     "\\core\\templates",
+    "\\core\\templates\\admin",
+    "\\core\\templates\\branch",
     "\\core\\templates\\core",
     "\\ecotrack",
     "\\ecotrack\\ecotrack",
     "\\ecotrack\\ecotrack\\__pycache__",
     "\\ecotrack_main"
   ],
-  "SelectedNode": "\\core\\templates\\core\\departments.html",
+  "SelectedNode": "\\core\\templates\\admin\\departments.html",
   "PreviewInSolutionExplorer": false
 }

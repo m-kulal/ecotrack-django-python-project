@@ -1,0 +1,20 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card bg-dark text-white border-danger">
+        <div class="card-body text-center">
+            <h2 class="text-danger">Confirm Deletion</h2>
+            <p class="lead">Are you sure you want to delete <strong>{{ dept.name }}</strong>?</p>
+            <div class="alert alert-warning border-warning bg-transparent text-warning">
+                <strong>Warning:</strong> This will also delete the manager account ({{ dept.managed_by.username }}) and all associated emission logs.
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger px-4">Yes, Delete Everything</button>
+                <a href="{% url 'department_list' %}" class="btn btn-secondary px-4">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

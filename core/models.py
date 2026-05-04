@@ -29,7 +29,6 @@ class Department(models.Model):
     # ADD THIS LINE IF IT IS MISSING
     managed_by = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
 # 4. Sustainability Goal
 class SustainabilityGoal(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)

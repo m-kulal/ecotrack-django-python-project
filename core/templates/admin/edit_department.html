@@ -1,0 +1,640 @@
+﻿{% extends 'admin/base_admin.html' %}
+{% load static %}
+
+{% block content %}
+
+<style>
+    /* ── All styles scoped to .ed-root — zero bleed into base ── */
+
+    .ed-root {
+        --accent: #39ff14;
+        --accent-dim: rgba(57,255,20,0.10);
+        --accent-glow: rgba(57,255,20,0.28);
+        --accent-bdr: rgba(57,255,20,0.22);
+        --surf: #1c1c1c;
+        --surf2: #222222;
+        --surf3: #2a2a2a;
+        --border: rgba(255,255,255,0.07);
+        --border2: rgba(255,255,255,0.12);
+        --txt1: #f1f1f1;
+        --txt2: #909090;
+        --txt3: #555;
+        --radius: 14px;
+        --radius-sm: 8px;
+        --ease: 0.2s cubic-bezier(.4,0,.2,1);
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        color: var(--txt1);
+        /* full-height centering */
+        min-height: calc(100vh - 60px);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 3rem 1.25rem 5rem;
+        box-sizing: border-box;
+    }
+
+    /* ── Outer width cap ─────────────────────────────── */
+    .ed-wrap {
+        width: 100%;
+        max-width: 560px;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        animation: ed-in .4s cubic-bezier(.4,0,.2,1) both;
+    }
+
+    @keyframes ed-in {
+        from {
+            opacity: 0;
+            transform: translateY(16px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ── Breadcrumb trail ────────────────────────────── */
+    .ed-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: .45rem;
+        font-size: .72rem;
+        font-family: 'JetBrains Mono', monospace;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--txt3);
+        margin-bottom: 1.5rem;
+    }
+
+        .ed-breadcrumb a {
+            color: var(--txt3);
+            text-decoration: none;
+            transition: color var(--ease);
+        }
+
+            .ed-breadcrumb a:hover {
+                color: var(--accent);
+            }
+
+    .ed-breadcrumb-sep {
+        color: var(--txt3);
+        opacity: .5;
+    }
+
+    .ed-breadcrumb-current {
+        color: var(--accent);
+        opacity: .85;
+    }
+
+    /* ── Card ────────────────────────────────────────── */
+    .ed-card {
+        background: var(--surf);
+        border: 1px solid var(--border2);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: 0 4px 32px rgba(0,0,0,.35);
+        transition: box-shadow var(--ease);
+    }
+
+        .ed-card:hover {
+            box-shadow: 0 6px 40px rgba(0,0,0,.45), 0 0 0 1px var(--accent-bdr);
+        }
+
+    /* ── Card header ─────────────────────────────────── */
+    .ed-card-header {
+        padding: 1.6rem 1.75rem 1.35rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+        /* subtle neon glow sweep behind the header */
+        .ed-card-header::before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(57,255,20,.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+    .ed-icon-wrap {
+        width: 44px;
+        height: 44px;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-bdr);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 0 12px rgba(57,255,20,.08);
+    }
+
+        .ed-icon-wrap svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--accent);
+        }
+
+    .ed-header-txt {
+        display: flex;
+        flex-direction: column;
+        gap: .2rem;
+    }
+
+    .ed-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: -.02em;
+        color: var(--txt1);
+        margin: 0;
+        line-height: 1.2;
+    }
+
+        .ed-title span {
+            color: var(--accent);
+        }
+
+    .ed-subtitle {
+        font-size: .8rem;
+        color: var(--txt3);
+        margin: 0;
+    }
+
+    /* dept name pill shown in header */
+    .ed-dept-pill {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-bdr);
+        color: var(--accent);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .68rem;
+        letter-spacing: .06em;
+        padding: .3rem .7rem;
+        border-radius: 100px;
+        white-space: nowrap;
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ed-dept-pill-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+        box-shadow: 0 0 5px var(--accent-glow);
+    }
+
+    /* ── Card body ───────────────────────────────────── */
+    .ed-card-body {
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.35rem;
+    }
+
+    /* ── Django messages ─────────────────────────────── */
+    .ed-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: .65rem;
+        padding: .75rem 1rem;
+        border-radius: var(--radius-sm);
+        font-size: .84rem;
+        font-weight: 500;
+        border: 1px solid;
+        line-height: 1.5;
+    }
+
+        .ed-alert svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .ed-alert.success {
+            background: rgba(57,255,20,.07);
+            border-color: var(--accent-bdr);
+            color: #70ff45;
+        }
+
+        .ed-alert.error {
+            background: rgba(248,113,113,.07);
+            border-color: rgba(248,113,113,.25);
+            color: #fca5a5;
+        }
+
+    /* ── Form fields ─────────────────────────────────── */
+    .ed-field {
+        display: flex;
+        flex-direction: column;
+        gap: .45rem;
+    }
+
+    .ed-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .68rem;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: var(--txt2);
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+    }
+
+        .ed-label em {
+            color: var(--accent);
+            font-style: normal;
+        }
+
+        .ed-label svg {
+            width: 12px;
+            height: 12px;
+            stroke: var(--txt3);
+        }
+
+    /* The actual Bootstrap input override */
+    .ed-input {
+        background: var(--surf2) !important;
+        border: 1px solid var(--border2) !important;
+        border-radius: var(--radius-sm) !important;
+        color: var(--txt1) !important;
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: .9rem;
+        padding: .7rem 1rem !important;
+        width: 100%;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color var(--ease), box-shadow var(--ease), background var(--ease) !important;
+        -webkit-appearance: none;
+    }
+
+        .ed-input::placeholder {
+            color: var(--txt3) !important;
+            font-size: .85rem;
+        }
+
+        .ed-input:focus {
+            border-color: var(--accent-bdr) !important;
+            background: var(--surf3) !important;
+            box-shadow: 0 0 0 3px rgba(57,255,20,.08), inset 0 0 12px rgba(57,255,20,.025) !important;
+            color: var(--txt1) !important;
+        }
+
+    /* hint text below field */
+    .ed-hint {
+        font-size: .74rem;
+        color: var(--txt3);
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        line-height: 1.4;
+    }
+
+        .ed-hint svg {
+            width: 11px;
+            height: 11px;
+            stroke: var(--txt3);
+            flex-shrink: 0;
+        }
+
+    /* ── Divider ─────────────────────────────────────── */
+    .ed-divider {
+        height: 1px;
+        background: var(--border);
+        margin: .25rem 0;
+    }
+
+    /* ── Action row ──────────────────────────────────── */
+    .ed-actions {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        margin-top: .25rem;
+    }
+
+    /* Update button */
+    .ed-btn-primary {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .55rem;
+        padding: .78rem 1rem;
+        background: var(--accent);
+        color: #050505;
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: .9rem;
+        font-weight: 700;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        letter-spacing: .01em;
+        white-space: nowrap;
+        transition: opacity var(--ease), box-shadow var(--ease), transform var(--ease);
+        text-decoration: none;
+    }
+
+        .ed-btn-primary svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .ed-btn-primary:hover {
+            opacity: .88;
+            box-shadow: 0 4px 22px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        .ed-btn-primary:active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+    /* Cancel button */
+    .ed-btn-cancel {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .45rem;
+        padding: .78rem 1.1rem;
+        background: transparent;
+        color: var(--txt2);
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: .9rem;
+        font-weight: 500;
+        border: 1px solid var(--border2);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        white-space: nowrap;
+        text-decoration: none;
+        transition: border-color var(--ease), color var(--ease), background var(--ease);
+    }
+
+        .ed-btn-cancel svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+        }
+
+        .ed-btn-cancel:hover {
+            border-color: rgba(248,113,113,.3);
+            color: #fca5a5;
+            background: rgba(248,113,113,.05);
+        }
+
+    /* ── Card footer ─────────────────────────────────── */
+    .ed-card-footer {
+        padding: .85rem 1.75rem;
+        border-top: 1px solid var(--border);
+        background: rgba(255,255,255,.015);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .ed-footer-note {
+        font-size: .74rem;
+        color: var(--txt3);
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+    }
+
+        .ed-footer-note svg {
+            width: 12px;
+            height: 12px;
+            stroke: var(--txt3);
+        }
+
+    .ed-footer-id {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: .7rem;
+        color: var(--txt3);
+        background: var(--surf2);
+        border: 1px solid var(--border);
+        padding: .2rem .55rem;
+        border-radius: 4px;
+    }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media(max-width:600px) {
+        .ed-root {
+            padding: 1.5rem .75rem 3rem;
+            align-items: flex-start;
+        }
+
+        .ed-card-header {
+            padding: 1.25rem 1.25rem 1rem;
+        }
+
+        .ed-card-body {
+            padding: 1.25rem;
+            gap: 1.1rem;
+        }
+
+        .ed-dept-pill {
+            display: none;
+        }
+        /* too tight on mobile */
+
+        .ed-actions {
+            flex-direction: column-reverse;
+        }
+
+        .ed-btn-cancel {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<div class="ed-root">
+    <div class="ed-wrap">
+
+        {# ── Breadcrumb ─────────────────────────────────── #}
+        <nav class="ed-breadcrumb" aria-label="breadcrumb">
+            <a href="{% url 'department_list' %}">Departments</a>
+            <span class="ed-breadcrumb-sep">/</span>
+            <span class="ed-breadcrumb-current">Edit</span>
+        </nav>
+
+        {# ── Main card ──────────────────────────────────── #}
+        <div class="ed-card">
+
+            {# Card header #}
+            <div class="ed-card-header">
+                <div class="ed-icon-wrap">
+                    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M16.862 4.487l1.687-1.688a1.875 1.875 0
+                     112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897
+                     1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M19.5 7.125L18 8.625" />
+                    </svg>
+                </div>
+                <div class="ed-header-txt">
+                    <h1 class="ed-title">Edit <span>Department</span></h1>
+                    <p class="ed-subtitle">Update department details below</p>
+                </div>
+                {# Show the current dept name as a pill badge #}
+                <span class="ed-dept-pill">
+                    <span class="ed-dept-pill-dot"></span>
+                    {{ dept.name }}
+                </span>
+            </div>
+
+            {# Card body — form #}
+            <div class="ed-card-body">
+
+                {# Django flash messages #}
+                {% if messages %}
+                {% for message in messages %}
+                <div class="ed-alert {{ message.tags }}">
+                    {% if 'success' in message.tags %}
+                    <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {% else %}
+                    <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                    {% endif %}
+                    {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {# ── The POST form ─────────────────────────── #}
+                <form method="POST" action="">
+                    {% csrf_token %}
+
+                    {# Department Name #}
+                    <div class="ed-field" style="margin-bottom:0;">
+                        <label class="ed-label" for="ed-name">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18
+                         M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5
+                         3H15m-1.5 3H15" />
+                            </svg>
+                            Department Name <em>*</em>
+                        </label>
+                        <input class="form-control bg-dark text-white border-success ed-input"
+                               type="text"
+                               id="ed-name"
+                               name="name"
+                               value="{{ dept.name }}"
+                               placeholder="e.g. Engineering, Finance…"
+                               required
+                               autocomplete="off">
+                        <span class="ed-hint">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708
+                         2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0
+                         11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                            </svg>
+                            The display name used across all EcoTrack reports.
+                        </span>
+                    </div>
+
+                    {# Gap between fields #}
+                    <div style="height:1.1rem;"></div>
+
+                    {# Location #}
+                    <div class="ed-field">
+                        <label class="ed-label" for="ed-location">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5
+                         17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                            </svg>
+                            Location <em>*</em>
+                        </label>
+                        <input class="form-control bg-dark text-white border-success ed-input"
+                               type="text"
+                               id="ed-location"
+                               name="location"
+                               value="{{ dept.location }}"
+                               placeholder="e.g. Mumbai HQ, Remote – Asia"
+                               required
+                               autocomplete="off">
+                        <span class="ed-hint">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708
+                         2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0
+                         11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                            </svg>
+                            Physical office or region this department operates from.
+                        </span>
+                    </div>
+
+                    <div class="ed-divider"></div>
+
+                    {# Action buttons #}
+                    <div class="ed-actions">
+
+                        {# Cancel — goes back to list #}
+                        <a href="{% url 'department_list' %}" class="ed-btn-cancel">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Cancel
+                        </a>
+
+                        {# Submit #}
+                        <button type="submit" class="ed-btn-primary btn btn-success">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Update Department
+                        </button>
+
+                    </div>
+
+                </form>
+            </div>{# /ed-card-body #}
+
+            {# Card footer — metadata #}
+            <div class="ed-card-footer">
+                <span class="ed-footer-note">
+                    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Created: {{ dept.created_at|date:"d M Y" }}
+                </span>
+                <span class="ed-footer-id">ID #{{ dept.id }}</span>
+            </div>
+
+        </div>{# /ed-card #}
+
+    </div>{# /ed-wrap #}
+</div>{# /ed-root #}
+
+{% endblock %}
