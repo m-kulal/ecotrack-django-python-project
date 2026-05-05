@@ -1,4 +1,9 @@
-﻿from django.shortcuts import render, redirect, get_object_or_404
+﻿# At the top of views.py, add to the existing import block:
+import json
+from datetime import date
+from dateutil.relativedelta import relativedelta
+from django.db.models.functions import TruncMonth
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q, Sum
@@ -458,3 +463,90 @@ def edit_organization(request):
         'org':      org,
         'org_name': org.name,   # keeps sidebar consistent even before save
     })
+
+# views.py  (add this alongside your existing manager views)
+
+# ─────────────────────────────────────────────────────────────────
+# 12. Manager Analytics
+#     Shows emission charts scoped to the logged-in manager's dept.
+#     Managers are NOT guaranteed to have a UserProfile, so org is
+#     resolved through the Department → Organization FK instead.
+# ─────────────────────────────────────────────────────────────────
+import json
+from datetime import date
+from dateutil.relativedelta import relativedelta   # pip install python-dateutil
+
+from django.db.models.functions import TruncMonth
+
+@login_required
+def manager_analytics(request):
+
+    # ── 1. Resolve the manager's department ──────────────────────────
+    # Mirrors the pattern used in manager_dashboard: look up by managed_by,
+    # never via UserProfile (managers may not have one).
+    dept = Department.objects.select_related('organization').filter(
+        managed_by=request.user
+    ).first()
+
+    if not dept:
+        # Not a manager — bounce to the admin area
+        return redirect('dashboard')
+
+    org_name = dept.organization.name
+
+    # ── 2. Scope the queryset to this single department ───────────────
+    # A manager owns exactly one department, so filtering by that dept
+    # is both correct and more efficient than a department__in lookup.
+    qs = ActivityLog.objects.filter(department=dept)
+
+    has_data = qs.exists()
+
+    # ── 3. Dataset A: total emissions per category (Doughnut chart) ───
+    category_qs = (
+        qs.values('category')
+          .annotate(total=Sum('emissions_amount'))
+          .order_by('category')
+    )
+    category_labels = [row['category']        for row in category_qs]
+    category_values = [round(row['total'], 2) for row in category_qs]
+
+    # ── 4. Dataset B: monthly totals — last 6 months (Line chart) ─────
+    today   = date.today()
+    six_ago = today.replace(day=1) - relativedelta(months=5)  # start of month 6 months back
+
+    monthly_qs = (
+        qs.filter(activity_date__gte=six_ago)
+          .annotate(month=TruncMonth('activity_date'))
+          .values('month')
+          .annotate(total=Sum('emissions_amount'))
+          .order_by('month')
+    )
+
+    # Build a complete 6-bucket scaffold — gaps become 0 so the line
+    # chart never has missing points.
+    month_map    = {
+        row['month'].replace(day=1): round(row['total'], 2)
+        for row in monthly_qs
+    }
+    month_labels = []
+    month_values = []
+    for i in range(6):
+        bucket = (six_ago + relativedelta(months=i)).replace(day=1)
+        month_labels.append(bucket.strftime('%b %Y'))
+        month_values.append(month_map.get(bucket, 0))
+
+    context = {
+        'org_name':        org_name,
+        'dept':            dept,                   # lets the template show dept.name
+        'has_data':        has_data,
+        'total_emissions': round(
+            qs.aggregate(t=Sum('emissions_amount'))['t'] or 0, 1
+        ),
+        'category_count':  len(category_labels),
+        'entry_count':     qs.count(),
+        'category_labels': json.dumps(category_labels),
+        'category_data':   json.dumps(category_values),
+        'month_labels':    json.dumps(month_labels),
+        'month_data':      json.dumps(month_values),
+    }
+    return render(request, 'manager/analytics.html', context)

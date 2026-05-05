@@ -25,4 +25,5 @@ urlpatterns = [
     # Manager (Department Head) Module
     path('manager/dashboard/',    views.manager_dashboard, name='manager_dashboard'),
     path('manager/add-activity/', views.add_activity,      name='add_activity'),
+    path('manager/analytics/', views.manager_analytics, name='manager_analytics'),
 ]

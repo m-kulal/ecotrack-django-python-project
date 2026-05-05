@@ -1,0 +1,456 @@
+﻿{% extends 'manager/base_manager.html' %}
+
+{% block page_title %}Analytics{% endblock %}
+{% block breadcrumb %}Analytics{% endblock %}
+{% block nav_analytics %}active{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<style>
+    /* ── Content width cap ───────────────────────────────────────────
+       Constrains the page to a readable max-width and centres it
+       within the space left by the sidebar (.admin-main already
+       applies margin-left: var(--sidebar-w) for us).              */
+    .analytics-page {
+        max-width: 1100px;
+        margin: 0 auto; /* centres within .content-area     */
+        width: 100%;
+    }
+
+    /* ── Page header ─────────────────────────────────────────────── */
+    .analytics-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .analytics-title {
+        font-family: var(--font-mono);
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: -0.02em;
+    }
+
+    .analytics-subtitle {
+        font-size: 0.78rem;
+        color: var(--text-2);
+        margin-top: 0.2rem;
+    }
+
+    /* ── Summary chips ───────────────────────────────────────────── */
+    .summary-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .summary-chip {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 0.55rem 0.9rem;
+        min-width: 150px;
+        flex: 1; /* chips share the row equally     */
+        max-width: 240px;
+    }
+
+    .chip-label {
+        font-size: 0.68rem;
+        color: var(--text-2);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-family: var(--font-mono);
+    }
+
+    .chip-value {
+        font-family: var(--font-mono);
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--accent);
+        margin-top: 0.15rem;
+    }
+
+    .chip-unit {
+        font-size: 0.7rem;
+        color: var(--text-2);
+        font-weight: 400;
+    }
+
+    /* ── Charts grid ─────────────────────────────────────────────── */
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr; /* side-by-side on desktop  */
+        gap: 1.25rem;
+        align-items: start;
+    }
+
+    /* Stack vertically on narrow screens (sidebar collapses at 768px
+       in base_manager so 820px is the right breakpoint here too)    */
+    @media (max-width: 820px) {
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .summary-chip {
+            max-width: 100%;
+        }
+    }
+
+    /* ── Individual chart card ───────────────────────────────────── */
+    .chart-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem 1.5rem 1.25rem;
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.2s;
+    }
+
+        .chart-card:hover {
+            border-color: var(--border-2);
+        }
+
+        /* Faint accent stripe on top */
+        .chart-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), transparent 55%);
+            opacity: 0.5;
+        }
+
+    .chart-card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .chart-card-icon {
+        width: 28px;
+        height: 28px;
+        background: var(--accent-dim);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+        .chart-card-icon svg {
+            color: var(--accent);
+        }
+
+    .chart-card-title {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: 0.01em;
+    }
+
+    .chart-card-sub {
+        font-size: 0.72rem;
+        color: var(--text-2);
+    }
+
+    /* Fixed canvas height — both cards stay the same size */
+    .chart-wrap {
+        position: relative;
+        height: 280px;
+    }
+
+    /* ── Empty state ─────────────────────────────────────────────── */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 4rem 2rem;
+        background: var(--surface);
+        border: 1px dashed var(--border-2);
+        border-radius: var(--radius-lg);
+        text-align: center;
+        grid-column: 1 / -1; /* spans both grid columns        */
+    }
+
+    .empty-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--accent-dim);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .empty-icon svg {
+            color: var(--accent);
+        }
+
+    .empty-title {
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .empty-body {
+        font-size: 0.8rem;
+        color: var(--text-2);
+        max-width: 320px;
+        line-height: 1.6;
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+{# ── Single centred wrapper ────────────────────────────────────────── #}
+<div class="analytics-page">
+
+    {# Page header #}
+    <div class="analytics-header">
+        <div>
+            <div class="analytics-title">Emissions Analytics</div>
+            <div class="analytics-subtitle">Last 6 months &bull; {{ dept.name }}</div>
+        </div>
+    </div>
+
+    {% if has_data %}
+
+    {# Summary chips #}
+    <div class="summary-row">
+        <div class="summary-chip">
+            <div class="chip-label">Total Emissions</div>
+            <div class="chip-value">
+                {{ total_emissions|floatformat:1 }}
+                <span class="chip-unit">kg CO₂</span>
+            </div>
+        </div>
+        <div class="summary-chip">
+            <div class="chip-label">Categories Tracked</div>
+            <div class="chip-value">{{ category_count }}</div>
+        </div>
+        <div class="summary-chip">
+            <div class="chip-label">Entries Logged</div>
+            <div class="chip-value">{{ entry_count }}</div>
+        </div>
+    </div>
+
+    {# Charts — side-by-side on ≥820 px, stacked below #}
+    <div class="charts-grid">
+
+        {# Card 1 — Doughnut #}
+        <div class="chart-card">
+            <div class="chart-card-header">
+                <div class="chart-card-icon">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4" fill="none" />
+                        <circle cx="7" cy="7" r="2" fill="currentColor" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="chart-card-title">Emission Distribution</div>
+                    <div class="chart-card-sub">by category &middot; all time</div>
+                </div>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="doughnutChart"></canvas>
+            </div>
+        </div>
+
+        {# Card 2 — Line #}
+        <div class="chart-card">
+            <div class="chart-card-header">
+                <div class="chart-card-icon">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M1 11 L4 7 L7 9 L10 4 L13 6"
+                              stroke="currentColor" stroke-width="1.4"
+                              stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="chart-card-title">6-Month Trend</div>
+                    <div class="chart-card-sub">total kg CO₂ per month</div>
+                </div>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="lineChart"></canvas>
+            </div>
+        </div>
+
+    </div>{# /.charts-grid #}
+
+    {% else %}
+
+    {# Empty state #}
+    <div class="charts-grid">
+        <div class="empty-state">
+            <div class="empty-icon">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                    <path d="M2 18 L6 12 L10 14.5 L14 8 L18 11 L21 7"
+                          stroke="currentColor" stroke-width="1.6"
+                          stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                    <circle cx="21" cy="7" r="1.5" fill="currentColor" />
+                </svg>
+            </div>
+            <div class="empty-title">No data recorded yet</div>
+            <p class="empty-body">
+                Start logging activities for your department and your
+                emissions analytics will appear here automatically.
+            </p>
+            <a href="{% url 'add_activity' %}" style="
+                display:inline-flex;align-items:center;gap:0.4rem;
+                margin-top:0.5rem;padding:0.55rem 1.1rem;
+                background:var(--accent-dim);border:1px solid rgba(57,255,20,0.25);
+                color:var(--accent);border-radius:var(--radius);
+                font-family:var(--font-mono);font-size:0.78rem;font-weight:600;
+                text-decoration:none;transition:background 0.18s;">
+                Log your first activity &rarr;
+            </a>
+        </div>
+    </div>
+
+    {% endif %}
+
+</div>{# /.analytics-page #}
+{% endblock %}
+
+
+{% block extra_scripts %}
+{% if has_data %}
+<script>
+/* ── Chart.js global defaults for dark mode ──────────────────── */
+Chart.defaults.color       = '#808080';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size   = 12;
+
+const PALETTE = [
+    '#39ff14',  /* neon green  */
+    '#00e5ff',  /* cyan        */
+    '#ff9f1c',  /* amber       */
+    '#ff4d6d',  /* coral red   */
+    '#b98dff',  /* lavender    */
+];
+
+const tooltipPlugin = {
+    backgroundColor: '#1a1a1a',
+    borderColor:     'rgba(255,255,255,0.10)',
+    borderWidth:     1,
+    titleColor:      '#e8e8e8',
+    bodyColor:       '#808080',
+    padding:         10,
+    cornerRadius:    6,
+    displayColors:   true,
+    boxWidth:        10,
+    boxHeight:       10,
+};
+
+const categoryLabels = {{ category_labels|safe }};
+const categoryData   = {{ category_data|safe }};
+const monthLabels    = {{ month_labels|safe }};
+const monthData      = {{ month_data|safe }};
+
+/* ── Doughnut ─────────────────────────────────────────────────── */
+new Chart(document.getElementById('doughnutChart'), {
+    type: 'doughnut',
+    data: {
+        labels: categoryLabels,
+        datasets: [{
+            data:            categoryData,
+            backgroundColor: PALETTE,
+            borderColor:     '#141414',
+            borderWidth:     3,
+            hoverOffset:     8,
+        }]
+    },
+    options: {
+        responsive:          true,
+        maintainAspectRatio: false,
+        cutout: '62%',
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: {
+                    color: '#e8e8e8', boxWidth: 12, boxHeight: 12,
+                    padding: 14, font: { size: 12 },
+                }
+            },
+            tooltip: {
+                ...tooltipPlugin,
+                callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString()} kg CO₂` }
+            }
+        }
+    }
+});
+
+/* ── Line ─────────────────────────────────────────────────────── */
+new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+        labels: monthLabels,
+        datasets: [{
+            label: 'kg CO₂',
+            data:  monthData,
+            borderColor:     '#39ff14',
+            backgroundColor: ctx => {
+                const { ctx: c, chartArea } = ctx.chart;
+                if (!chartArea) return 'transparent';
+                const grad = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                grad.addColorStop(0, 'rgba(57,255,20,0.18)');
+                grad.addColorStop(1, 'rgba(57,255,20,0.00)');
+                return grad;
+            },
+            fill:                 true,
+            tension:              0.38,
+            pointBackgroundColor: '#39ff14',
+            pointBorderColor:     '#0e0e0e',
+            pointBorderWidth:     2,
+            pointRadius:          4,
+            pointHoverRadius:     6,
+            borderWidth:          2,
+        }]
+    },
+    options: {
+        responsive:          true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+            x: {
+                grid:   { color: 'rgba(255,255,255,0.05)' },
+                ticks:  { color: '#808080', font: { size: 11 } },
+                border: { color: 'transparent' },
+            },
+            y: {
+                grid:   { color: 'rgba(255,255,255,0.05)' },
+                ticks:  { color: '#808080', font: { size: 11 },
+                          callback: v => v.toLocaleString() + ' kg' },
+                border: { color: 'transparent' },
+                beginAtZero: true,
+            }
+        },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                ...tooltipPlugin,
+                callbacks: { label: ctx => ` ${ctx.parsed.y.toLocaleString()} kg CO₂` }
+            }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}
