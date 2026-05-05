@@ -1,0 +1,708 @@
+﻿{% extends 'manager/base_manager.html' %}
+
+{% block page_title %}Log Activity{% endblock %}
+{% block breadcrumb %}Log Activity{% endblock %}
+{% block nav_add_activity %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ── Page centering ─────────────────────────────────────────── */
+    .aa-root {
+        display: flex;
+        justify-content: center;
+        padding-top: 0.5rem;
+    }
+
+    .aa-wrap {
+        width: 100%;
+        max-width: 580px;
+        animation: aaIn 0.4s cubic-bezier(0.16,1,0.3,1) both;
+    }
+
+    @keyframes aaIn {
+        from {
+            opacity: 0;
+            transform: translateY(14px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ── Breadcrumb ─────────────────────────────────────────────── */
+    .aa-crumb {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        margin-bottom: 1.4rem;
+    }
+
+        .aa-crumb a {
+            color: var(--text-3);
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+
+            .aa-crumb a:hover {
+                color: var(--accent);
+            }
+
+    .aa-crumb-sep {
+        opacity: 0.45;
+    }
+
+    .aa-crumb-current {
+        color: var(--accent);
+        opacity: 0.85;
+    }
+
+    /* ── Card ───────────────────────────────────────────────────── */
+    .aa-card {
+        background: var(--surface);
+        border: 1px solid var(--border-2);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: 0 4px 32px rgba(0,0,0,0.35);
+        transition: box-shadow 0.2s;
+    }
+
+        .aa-card:hover {
+            box-shadow: 0 6px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(57,255,20,0.1);
+        }
+
+    /* Card header */
+    .aa-card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+        padding: 1.4rem 1.7rem 1.2rem;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+    }
+
+        /* Radial glow sweep in header */
+        .aa-card-header::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(57,255,20,0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+    .aa-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--accent-dim);
+        border: 1px solid rgba(57,255,20,0.22);
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 0 12px rgba(57,255,20,0.07);
+    }
+
+        .aa-icon svg {
+            width: 19px;
+            height: 19px;
+            stroke: var(--accent);
+        }
+
+    .aa-header-txt {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .aa-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text);
+        font-family: var(--font-mono);
+        margin: 0;
+    }
+
+        .aa-title span {
+            color: var(--accent);
+        }
+
+    .aa-subtitle {
+        font-size: 0.78rem;
+        color: var(--text-3);
+        margin: 0;
+    }
+
+    /* Dept pill in header */
+    .aa-dept-pill {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: var(--accent-dim);
+        border: 1px solid rgba(57,255,20,0.2);
+        color: var(--accent);
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        padding: 0.28rem 0.7rem;
+        border-radius: 100px;
+        white-space: nowrap;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .aa-pill-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+        box-shadow: 0 0 5px var(--accent-glow);
+        animation: aaPulse 2.2s ease-in-out infinite;
+    }
+
+    @keyframes aaPulse {
+        0%,100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: 0.4;
+            transform: scale(0.75);
+        }
+    }
+
+    /* Form body */
+    .aa-form-body {
+        padding: 1.7rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+    }
+
+    /* Emission-factor info bar */
+    .aa-factor-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.65rem 0.9rem;
+        background: var(--accent-dim);
+        border: 1px solid rgba(57,255,20,0.15);
+        border-radius: var(--radius);
+        font-size: 0.78rem;
+        color: var(--accent);
+    }
+
+        .aa-factor-bar svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--accent);
+            flex-shrink: 0;
+        }
+
+    /* Fields */
+    .aa-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.42rem;
+    }
+
+    .aa-label {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-2);
+        display: flex;
+        align-items: center;
+        gap: 0.38rem;
+    }
+
+        .aa-label svg {
+            width: 11px;
+            height: 11px;
+            stroke: var(--text-3);
+        }
+
+        .aa-label em {
+            color: var(--accent);
+            font-style: normal;
+        }
+
+    .aa-input, .aa-select {
+        background: var(--surface-2) !important;
+        border: 1px solid var(--border-2) !important;
+        border-radius: var(--radius) !important;
+        color: var(--text) !important;
+        font-family: var(--font-body);
+        font-size: 0.9rem;
+        padding: 0.7rem 1rem !important;
+        width: 100%;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s !important;
+        -webkit-appearance: none;
+    }
+
+        .aa-input::placeholder {
+            color: var(--text-3) !important;
+            font-size: 0.85rem;
+        }
+
+        .aa-input:focus, .aa-select:focus {
+            border-color: rgba(57,255,20,0.3) !important;
+            background: var(--surface-3) !important;
+            box-shadow: 0 0 0 3px rgba(57,255,20,0.07), inset 0 0 12px rgba(57,255,20,0.025) !important;
+            color: var(--text) !important;
+        }
+
+    /* Category dropdown — custom caret */
+    .aa-select-wrap {
+        position: relative;
+    }
+
+        .aa-select-wrap::after {
+            content: '';
+            position: absolute;
+            right: 0.9rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 5px solid var(--text-3);
+            pointer-events: none;
+        }
+
+    .aa-select option {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+
+    /* 2-col row */
+    .aa-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    /* Hint */
+    .aa-hint {
+        font-size: 0.72rem;
+        color: var(--text-3);
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+        .aa-hint svg {
+            width: 10px;
+            height: 10px;
+            stroke: var(--text-3);
+            flex-shrink: 0;
+        }
+
+    /* Live emission preview */
+    .aa-preview {
+        display: none; /* shown by JS when quantity filled */
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.6rem 0.9rem;
+        background: rgba(57,255,20,0.05);
+        border: 1px solid rgba(57,255,20,0.12);
+        border-radius: var(--radius);
+        font-size: 0.8rem;
+        color: var(--text-2);
+    }
+
+        .aa-preview.show {
+            display: flex;
+        }
+
+        .aa-preview strong {
+            color: var(--accent);
+            font-family: var(--font-mono);
+        }
+
+    /* Divider */
+    .aa-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 0.1rem 0;
+    }
+
+    /* Buttons */
+    .aa-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+    }
+
+    .aa-btn-save {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.78rem 1rem;
+        background: var(--accent);
+        color: #050505;
+        font-family: var(--font-body);
+        font-size: 0.9rem;
+        font-weight: 700;
+        border: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        transition: opacity 0.2s, box-shadow 0.2s, transform 0.2s;
+        text-decoration: none;
+    }
+
+        .aa-btn-save svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+        }
+
+        .aa-btn-save:hover {
+            opacity: 0.87;
+            box-shadow: 0 4px 22px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        .aa-btn-save:active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+    .aa-btn-cancel {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.42rem;
+        padding: 0.78rem 1.1rem;
+        background: transparent;
+        color: var(--text-2);
+        font-family: var(--font-body);
+        font-size: 0.9rem;
+        font-weight: 500;
+        border: 1px solid var(--border-2);
+        border-radius: var(--radius);
+        cursor: pointer;
+        white-space: nowrap;
+        text-decoration: none;
+        transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+
+        .aa-btn-cancel svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .aa-btn-cancel:hover {
+            border-color: rgba(255,68,68,0.3);
+            color: var(--danger);
+            background: var(--danger-dim);
+        }
+
+    /* Card footer */
+    .aa-footer {
+        padding: 0.8rem 1.7rem;
+        border-top: 1px solid var(--border);
+        background: rgba(255,255,255,0.012);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .aa-footer-factor {
+        font-family: var(--font-mono);
+        font-size: 0.63rem;
+        color: var(--text-3);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .aa-factor-chip {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        padding: 0.15rem 0.5rem;
+        border-radius: 3px;
+        white-space: nowrap;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+        .aa-root {
+            padding-top: 0;
+        }
+
+        .aa-form-body {
+            padding: 1.25rem;
+            gap: 1rem;
+        }
+
+        .aa-row {
+            grid-template-columns: 1fr;
+        }
+
+        .aa-actions {
+            flex-direction: column-reverse;
+        }
+
+        .aa-btn-cancel {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .aa-dept-pill {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<div class="aa-root">
+    <div class="aa-wrap">
+
+        {# Breadcrumb #}
+        <nav class="aa-crumb" aria-label="breadcrumb">
+            <a href="{% url 'manager_dashboard' %}">Dashboard</a>
+            <span class="aa-crumb-sep">/</span>
+            <span class="aa-crumb-current">Log Activity</span>
+        </nav>
+
+        {# Card #}
+        <div class="aa-card">
+
+            {# Header #}
+            <div class="aa-card-header">
+                <div class="aa-icon">
+                    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                </div>
+                <div class="aa-header-txt">
+                    <h1 class="aa-title">Log <span>Activity</span></h1>
+                    <p class="aa-subtitle">Record an emission-generating activity for your department</p>
+                </div>
+                <span class="aa-dept-pill">
+                    <span class="aa-pill-dot"></span>{{ dept.name }}
+                </span>
+            </div>
+
+           
+            <form class="aa-form-body" method="POST" action="{% url 'add_activity' %}">
+                {% csrf_token %}
+
+                {# Emission-factor info banner #}
+                <div class="aa-factor-bar">
+                    <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0
+                     001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    CO₂ is calculated automatically from your quantity using built-in emission factors.
+                    You never need to enter it manually.
+                </div>
+
+                {# Category + Date — side by side #}
+                <div class="aa-row">
+
+                    {# Category dropdown #}
+                    <div class="aa-field">
+                        <label class="aa-label" for="aa-category">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581
+                         9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0
+                         005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0
+                         009.568 3z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+                            </svg>
+                            Category <em>*</em>
+                        </label>
+                        <div class="aa-select-wrap">
+                            <select class="aa-select" id="aa-category" name="category" required
+                                    onchange="updatePreview()">
+                                <option value="" disabled selected style="color:var(--text-3);">
+                                    — Select category —
+                                </option>
+                                {% for cat in categories %}
+                                <option value="{{ cat }}">
+                                    {% if cat == 'Electricity' %}⚡ Electricity (kWh)
+                                    {% elif cat == 'Water'       %}💧 Water (litres)
+                                    {% elif cat == 'Petrol'      %}⛽ Petrol (litres)
+                                    {% elif cat == 'Diesel'      %}🛢️  Diesel (litres)
+                                    {% elif cat == 'Travel'      %}✈️  Travel (km)
+                                    {% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    {# Activity date #}
+                    <div class="aa-field">
+                        <label class="aa-label" for="aa-date">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5
+                         A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25
+                         0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0
+                         0121 11.25v7.5" />
+                            </svg>
+                            Activity Date <em>*</em>
+                        </label>
+                        <input class="aa-input" type="date" id="aa-date" name="activity_date"
+                               required
+                               max="{% now 'Y-m-d' %}">
+                        <span class="aa-hint">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0
+                         001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Date the activity actually occurred.
+                        </span>
+                    </div>
+
+                </div>
+
+                {# Quantity — full width #}
+                <div class="aa-field">
+                    <label class="aa-label" for="aa-quantity">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25v-.008zm0
+                       2.25h.008v.008H8.25v-.008zm2.498-6.75h.008v.008h-.008v-.008zm0
+                       2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008v-.008zm2.504-4.5h.008v.008h-.008v-.008zm0
+                       2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008v-.008zm2.498-4.5h.008v.008h-.008v-.008zm0
+                       2.25h.008v.008h-.008v-.008zM8.25 6h7.5v2.25h-7.5V6zM12
+                       2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.598 4.5
+                       4.718V21a.75.75 0 001.5 0V4.718c0-.223.102-.432.276-.56A48.098
+                       48.098 0 0112 3.75c1.97 0 3.93.124 5.724.368.174.13.276.337.276.56V21a.75.75
+                       0 001.5 0V4.718c0-1.12-.807-2.019-1.907-2.147A48.507 48.507 0 0012 2.25z" />
+                        </svg>
+                        Quantity <em>*</em>
+                    </label>
+                    <input class="aa-input" type="number" id="aa-quantity" name="quantity"
+                           placeholder="e.g. 150"
+                           min="0.001" step="any" required
+                           oninput="updatePreview()">
+                    <span class="aa-hint">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0
+                       001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        kWh for Electricity · litres for Water/Petrol/Diesel · km for Travel.
+                        Must be a positive number.
+                    </span>
+                </div>
+
+                {# Live CO₂ preview — shown by JS #}
+                <div class="aa-preview" id="aaPreview">
+                    <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                         style="width:14px;height:14px;stroke:var(--accent);flex-shrink:0;">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Estimated CO₂: <strong id="aaPreviewVal">—</strong> kg
+                    &nbsp;<span style="color:var(--text-3);font-size:0.72rem;">(saved automatically)</span>
+                </div>
+
+                <div class="aa-divider"></div>
+
+                {# Buttons #}
+                <div class="aa-actions">
+                    <a href="{% url 'manager_dashboard' %}" class="aa-btn-cancel">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Cancel
+                    </a>
+                    <button type="submit" class="aa-btn-save">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Save Activity Log
+                    </button>
+                </div>
+
+            </form>
+
+            {# Footer — emission factors reference #}
+            <div class="aa-footer">
+                <span class="aa-footer-factor">
+                    Emission factors used:
+                    <span class="aa-factor-chip">⚡ Electricity: 0.85 kg/kWh</span>
+                    <span class="aa-factor-chip">💧 Water: 0.30 kg/L</span>
+                    <span class="aa-factor-chip">⛽ Petrol: 2.31 kg/L</span>
+                    <span class="aa-factor-chip">🛢️ Diesel: 2.68 kg/L</span>
+                    <span class="aa-factor-chip">✈️ Travel: 0.18 kg/km</span>
+                </span>
+            </div>
+
+        </div>{# /aa-card #}
+
+    </div>{# /aa-wrap #}
+</div>{# /aa-root #}
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+    /*
+     * Live CO₂ preview
+     * Mirrors the EMISSION_FACTORS dict in models.py exactly.
+     * Purely informational — the model always recalculates on save.
+     */
+    const FACTORS = {
+        'Electricity': 0.85,
+        'Water':       0.30,
+        'Petrol':      2.31,
+        'Diesel':      2.68,
+        'Travel':      0.18,
+    };
+
+    function updatePreview() {
+        var cat      = document.getElementById('aa-category').value;
+        var qty      = parseFloat(document.getElementById('aa-quantity').value);
+        var preview  = document.getElementById('aaPreview');
+        var previewV = document.getElementById('aaPreviewVal');
+
+        if (cat && qty > 0 && FACTORS[cat] !== undefined) {
+            var co2 = (qty * FACTORS[cat]).toFixed(4);
+            previewV.textContent = co2;
+            preview.classList.add('show');
+        } else {
+            preview.classList.remove('show');
+        }
+    }
+</script>
+{% endblock %}

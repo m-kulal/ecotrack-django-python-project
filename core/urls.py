@@ -19,6 +19,10 @@ urlpatterns = [
     path('dashboard/departments/edit/<int:dept_id>/', views.edit_department, name='edit_department'),
     path('dashboard/departments/delete/<int:dept_id>/', views.delete_department, name='delete_department'),
 
-    # Organisation settings — Admin can rename/update their org
+    # Organisation settings -- Admin can rename/update their org
     path('dashboard/organization/edit/', views.edit_organization, name='edit_organization'),
+
+    # Manager (Department Head) Module
+    path('manager/dashboard/',    views.manager_dashboard, name='manager_dashboard'),
+    path('manager/add-activity/', views.add_activity,      name='add_activity'),
 ]

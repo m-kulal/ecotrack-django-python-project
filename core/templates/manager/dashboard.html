@@ -1,0 +1,530 @@
+﻿{% extends 'manager/base_manager.html' %}
+
+{% block page_title %}Manager Dashboard{% endblock %}
+{% block breadcrumb %}{{ dept.name }}{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ── Stat cards grid ────────────────────────────────────────── */
+    .mgr-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* ── Category breakdown grid ────────────────────────────────── */
+    .mgr-cat-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* ── Category pill card ─────────────────────────────────────── */
+    .cat-card {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 0.9rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        transition: border-color 0.2s, transform 0.2s;
+    }
+
+        .cat-card:hover {
+            border-color: rgba(57,255,20,0.2);
+            transform: translateY(-2px);
+        }
+
+    .cat-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .cat-icon-electricity {
+        background: rgba(255,200,50,0.12);
+    }
+
+    .cat-icon-water {
+        background: rgba(50,150,255,0.12);
+    }
+
+    .cat-icon-petrol {
+        background: rgba(255,100,50,0.12);
+    }
+
+    .cat-icon-diesel {
+        background: rgba(200,80,255,0.12);
+    }
+
+    .cat-icon-travel {
+        background: rgba(57,255,20,0.10);
+    }
+
+    .cat-label {
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-3);
+    }
+
+    .cat-value {
+        font-family: var(--font-mono);
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1;
+    }
+
+    .cat-unit {
+        font-size: 0.6rem;
+        color: var(--text-3);
+        font-weight: 400;
+    }
+
+    /* ── Activity table ─────────────────────────────────────────── */
+    .act-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+        table-layout: fixed;
+    }
+
+    .act-th {
+        padding: 0.6rem 1rem;
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        background: var(--surface-2);
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+
+        .act-th:first-child {
+            padding-left: 1.4rem;
+            width: 18%;
+        }
+
+        .act-th:nth-child(2) {
+            width: 18%;
+        }
+
+        .act-th:nth-child(3) {
+            width: 15%;
+        }
+
+        .act-th:nth-child(4) {
+            width: 18%;
+        }
+
+        .act-th:last-child {
+            text-align: right;
+            padding-right: 1.4rem;
+            width: 18%;
+        }
+
+    .act-td {
+        padding: 0.8rem 1rem;
+        color: var(--text);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+        .act-td:first-child {
+            padding-left: 1.4rem;
+        }
+
+        .act-td:last-child {
+            text-align: right;
+            padding-right: 1.4rem;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+    .act-tr:hover .act-td {
+        background: rgba(255,255,255,0.022);
+    }
+
+    .act-tr:last-child .act-td {
+        border-bottom: none;
+    }
+
+    /* Category badge in table */
+    .cat-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 600;
+        padding: 0.2rem 0.55rem;
+        border-radius: 3px;
+    }
+
+    .cat-badge-electricity {
+        background: rgba(255,200,50,0.1);
+        border: 1px solid rgba(255,200,50,0.2);
+        color: #ffc832;
+    }
+
+    .cat-badge-water {
+        background: rgba(50,150,255,0.1);
+        border: 1px solid rgba(50,150,255,0.2);
+        color: #4a96ff;
+    }
+
+    .cat-badge-petrol {
+        background: rgba(255,100,50,0.1);
+        border: 1px solid rgba(255,100,50,0.2);
+        color: #ff6432;
+    }
+
+    .cat-badge-diesel {
+        background: rgba(200,80,255,0.1);
+        border: 1px solid rgba(200,80,255,0.2);
+        color: #c850ff;
+    }
+
+    .cat-badge-travel {
+        background: rgba(57,255,20,0.08);
+        border: 1px solid rgba(57,255,20,0.2);
+        color: var(--accent);
+    }
+
+    /* Skeleton shimmer */
+    .skel {
+        background: var(--surface-3);
+        border-radius: 2px;
+        display: inline-block;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+        .mgr-stat-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .mgr-cat-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    @media (max-width: 600px) {
+        .mgr-stat-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .mgr-cat-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .act-table {
+            table-layout: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+{# ── Page header ──────────────────────────────────────────────── #}
+<div class="page-header anim-fade-up">
+    <div>
+        <div class="page-eyebrow">{{ org_name }} &nbsp;·&nbsp; Manager Portal</div>
+        <h1 class="page-title">{{ dept.name }}</h1>
+        <p class="page-subtitle">
+            {{ dept.location }} &nbsp;·&nbsp; Logged in as
+            <strong style="color:var(--text);">{{ manager_name }}</strong>
+        </p>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.6rem;">
+        <a href="{% url 'add_activity' %}" class="btn-accent">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <circle cx="6" cy="6" r="5.5" stroke="currentColor" stroke-width="1.3" fill="none" />
+                <path d="M6 3.5v5M3.5 6h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            </svg>
+            Log Activity
+        </a>
+    </div>
+</div>
+
+
+{# ── Stat cards ───────────────────────────────────────────────── #}
+<div class="mgr-stat-grid">
+
+    {# Card 1: Monthly Emissions #}
+    <div class="admin-card anim-fade-up anim-delay-1">
+        <div class="card-shine"></div>
+        <div class="card-body-eco">
+
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.1rem;">
+                <div style="width:36px;height:36px;background:var(--accent-dim);
+                            border:1px solid rgba(57,255,20,0.15);border-radius:8px;
+                            display:flex;align-items:center;justify-content:center;">
+                    {# Leaf / emissions icon #}
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M2 15 L5 10 L8.5 12.5 L12 7 L15.5 9.5"
+                              stroke="#39ff14" stroke-width="1.6"
+                              stroke-linecap="round" stroke-linejoin="round" />
+                        <circle cx="15.5" cy="9.5" r="1.8" fill="#39ff14" />
+                    </svg>
+                </div>
+                <span style="font-family:var(--font-mono);font-size:0.58rem;font-weight:600;
+                             letter-spacing:0.12em;text-transform:uppercase;
+                             padding:0.2rem 0.5rem;border-radius:3px;
+                             background:rgba(57,255,20,0.08);border:1px solid rgba(57,255,20,0.15);
+                             color:var(--accent);">{{ current_month }}</span>
+            </div>
+
+            <div style="font-family:var(--font-mono);font-size:2.1rem;font-weight:700;
+                        letter-spacing:-0.04em;color:var(--text);line-height:1;margin-bottom:0.35rem;">
+                {{ monthly_emissions }}
+                <span style="font-size:0.85rem;color:var(--text-2);font-weight:400;">kg CO₂</span>
+            </div>
+            <div class="mono-label">Monthly Carbon Footprint</div>
+
+        </div>
+    </div>
+
+    {# Card 2: Total Logs #}
+    <div class="admin-card anim-fade-up anim-delay-2">
+        <div class="card-shine"></div>
+        <div class="card-body-eco">
+
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.1rem;">
+                <div style="width:36px;height:36px;background:rgba(50,150,255,0.08);
+                            border:1px solid rgba(50,150,255,0.15);border-radius:8px;
+                            display:flex;align-items:center;justify-content:center;">
+                    {# Document / log icon #}
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <rect x="3" y="2" width="12" height="14" rx="2"
+                              stroke="#4a96ff" stroke-width="1.5" fill="none" />
+                        <path d="M6 6.5h6M6 9.5h6M6 12.5h4"
+                              stroke="#4a96ff" stroke-width="1.3" stroke-linecap="round" />
+                    </svg>
+                </div>
+                <span style="font-family:var(--font-mono);font-size:0.58rem;font-weight:600;
+                             letter-spacing:0.12em;text-transform:uppercase;
+                             padding:0.2rem 0.5rem;border-radius:3px;
+                             background:rgba(50,150,255,0.08);border:1px solid rgba(50,150,255,0.15);
+                             color:#4a96ff;">ALL TIME</span>
+            </div>
+
+            <div style="font-family:var(--font-mono);font-size:2.1rem;font-weight:700;
+                        letter-spacing:-0.04em;color:var(--text);line-height:1;margin-bottom:0.35rem;">
+                {{ log_count }}
+                <span style="font-size:0.85rem;color:var(--text-2);font-weight:400;">entries</span>
+            </div>
+            <div class="mono-label">Total Activity Logs</div>
+
+        </div>
+    </div>
+
+    {# Card 3: This Month's Entries #}
+    <div class="admin-card anim-fade-up anim-delay-3">
+        <div class="card-shine"></div>
+        <div class="card-body-eco">
+
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.1rem;">
+                <div style="width:36px;height:36px;background:rgba(255,170,0,0.08);
+                            border:1px solid rgba(255,170,0,0.15);border-radius:8px;
+                            display:flex;align-items:center;justify-content:center;">
+                    {# Calendar icon #}
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <rect x="2" y="3.5" width="14" height="12" rx="2"
+                              stroke="#ffaa00" stroke-width="1.5" fill="none" />
+                        <path d="M2 7.5h14" stroke="#ffaa00" stroke-width="1.3" />
+                        <path d="M6 2v3M12 2v3"
+                              stroke="#ffaa00" stroke-width="1.3" stroke-linecap="round" />
+                        <circle cx="6.5" cy="11" r="0.9" fill="#ffaa00" />
+                        <circle cx="9.5" cy="11" r="0.9" fill="#ffaa00" />
+                        <circle cx="12.5" cy="11" r="0.9" fill="#ffaa00" />
+                    </svg>
+                </div>
+                <span style="font-family:var(--font-mono);font-size:0.58rem;font-weight:600;
+                             letter-spacing:0.12em;text-transform:uppercase;
+                             padding:0.2rem 0.5rem;border-radius:3px;
+                             background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.15);
+                             color:var(--warning);">{{ current_month }}</span>
+            </div>
+
+            <div style="font-family:var(--font-mono);font-size:2.1rem;font-weight:700;
+                        letter-spacing:-0.04em;color:var(--text);line-height:1;margin-bottom:0.35rem;">
+                {{ monthly_count }}
+                <span style="font-size:0.85rem;color:var(--text-2);font-weight:400;">logs</span>
+            </div>
+            <div class="mono-label">Entries This Month</div>
+
+        </div>
+    </div>
+
+</div>
+
+
+{# ── Category breakdown ───────────────────────────────────────── #}
+<div class="mgr-cat-grid anim-fade-up anim-delay-2">
+
+    <div class="cat-card">
+        <div class="cat-icon cat-icon-electricity">⚡</div>
+        <span class="cat-label">Electricity</span>
+        <span class="cat-value">
+            {{ category_totals.Electricity }}
+            <span class="cat-unit">kg CO₂</span>
+        </span>
+    </div>
+
+    <div class="cat-card">
+        <div class="cat-icon cat-icon-water">💧</div>
+        <span class="cat-label">Water</span>
+        <span class="cat-value">
+            {{ category_totals.Water }}
+            <span class="cat-unit">kg CO₂</span>
+        </span>
+    </div>
+
+    <div class="cat-card">
+        <div class="cat-icon cat-icon-petrol">⛽</div>
+        <span class="cat-label">Petrol</span>
+        <span class="cat-value">
+            {{ category_totals.Petrol }}
+            <span class="cat-unit">kg CO₂</span>
+        </span>
+    </div>
+
+    <div class="cat-card">
+        <div class="cat-icon cat-icon-diesel">🛢️</div>
+        <span class="cat-label">Diesel</span>
+        <span class="cat-value">
+            {{ category_totals.Diesel }}
+            <span class="cat-unit">kg CO₂</span>
+        </span>
+    </div>
+
+    <div class="cat-card">
+        <div class="cat-icon cat-icon-travel">✈️</div>
+        <span class="cat-label">Travel</span>
+        <span class="cat-value">
+            {{ category_totals.Travel }}
+            <span class="cat-unit">kg CO₂</span>
+        </span>
+    </div>
+
+</div>
+
+
+{# ── Recent Activity table ────────────────────────────────────── #}
+<div class="admin-card anim-fade-up anim-delay-3">
+    <div class="card-shine"></div>
+
+    <div class="card-header-eco">
+        <span class="card-title-eco">Recent Activity Logs</span>
+        <a href="{% url 'add_activity' %}"
+           style="font-family:var(--font-mono);font-size:0.65rem;
+                  color:var(--text-2);text-decoration:none;
+                  display:flex;align-items:center;gap:0.3rem;transition:color 0.15s;"
+           onmouseover="this.style.color='var(--accent)'"
+           onmouseout="this.style.color='var(--text-2)'">
+            + Add New
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5"
+                      stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+            </svg>
+        </a>
+    </div>
+
+    <table class="act-table">
+        <thead>
+            <tr>
+                <th class="act-th">Date</th>
+                <th class="act-th">Category</th>
+                <th class="act-th">Quantity</th>
+                <th class="act-th">Logged By</th>
+                <th class="act-th" style="text-align:right;padding-right:1.4rem;">CO₂ (kg)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in recent_logs %}
+            <tr class="act-tr">
+                <td class="act-td">
+                    <span style="font-family:var(--font-mono);font-size:0.75rem;">
+                        {{ log.activity_date|date:"d M Y" }}
+                    </span>
+                </td>
+                <td class="act-td">
+                    <span class="cat-badge cat-badge-{{ log.category|lower }}">
+                        {% if log.category == 'Electricity' %}⚡
+                        {% elif log.category == 'Water' %}💧
+                        {% elif log.category == 'Petrol' %}⛽
+                        {% elif log.category == 'Diesel' %}🛢️
+                        {% elif log.category == 'Travel' %}✈️
+                        {% endif %}
+                        {{ log.category }}
+                    </span>
+                </td>
+                <td class="act-td" style="color:var(--text-2);">
+                    {{ log.quantity }}
+                    <span style="font-size:0.7rem;color:var(--text-3);">
+                        {% if log.category == 'Electricity' %}kWh
+                        {% elif log.category == 'Water' %}L
+                        {% elif log.category == 'Travel' %}km
+                        {% else %}L
+                        {% endif %}
+                    </span>
+                </td>
+                <td class="act-td" style="color:var(--text-2);font-size:0.78rem;">
+                    {{ log.logged_by.username|default:"—" }}
+                </td>
+                <td class="act-td" style="color:var(--accent);">
+                    {{ log.emissions_amount }}
+                </td>
+            </tr>
+            {% empty %}
+            {# Three static skeleton rows #}
+            <tr>
+                <td class="act-td"><span class="skel" style="width:80px;height:9px;display:inline-block;"></span></td>
+                <td class="act-td"><span class="skel" style="width:70px;height:18px;border-radius:3px;display:inline-block;"></span></td>
+                <td class="act-td"><span class="skel" style="width:50px;height:9px;background:var(--surface-2);display:inline-block;"></span></td>
+                <td class="act-td"><span class="skel" style="width:60px;height:9px;display:inline-block;"></span></td>
+                <td class="act-td" style="text-align:right;padding-right:1.4rem;"><span class="skel" style="width:40px;height:9px;display:inline-block;"></span></td>
+            </tr>
+            <tr>
+                <td class="act-td"><span class="skel" style="width:70px;height:9px;display:inline-block;"></span></td>
+                <td class="act-td"><span class="skel" style="width:60px;height:18px;border-radius:3px;display:inline-block;"></span></td>
+                <td class="act-td"><span class="skel" style="width:45px;height:9px;background:var(--surface-2);display:inline-block;"></span></td>
+                <td class="act-td"><span class="skel" style="width:70px;height:9px;display:inline-block;"></span></td>
+                <td class="act-td" style="text-align:right;padding-right:1.4rem;"><span class="skel" style="width:35px;height:9px;display:inline-block;"></span></td>
+            </tr>
+            <tr>
+                <td colspan="5" style="padding:1.5rem;text-align:center;border-bottom:none;">
+                    <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-3);">
+                        No activity logged yet —
+                        <a href="{% url 'add_activity' %}"
+                           style="color:var(--accent);text-decoration:none;">add your first entry →</a>
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+{% endblock %}

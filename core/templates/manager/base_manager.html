@@ -1,0 +1,857 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EcoTrack Manager — {% block page_title %}Dashboard{% endblock %}</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+          crossorigin="anonymous" />
+
+    <!-- IBM Plex Mono + DM Sans — same as admin base -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap"
+          rel="stylesheet" />
+
+    <style>
+        /* ═══════════════════════════════════════════════════════════
+           DESIGN TOKENS  (identical to base_admin.html)
+        ═══════════════════════════════════════════════════════════ */
+        :root {
+            --bg: #0e0e0e;
+            --bg-deep: #080808;
+            --surface: #141414;
+            --surface-2: #1a1a1a;
+            --surface-3: #202020;
+            --border: rgba(255,255,255,0.06);
+            --border-2: rgba(255,255,255,0.10);
+            --accent: #39ff14;
+            --accent-dim: rgba(57,255,20,0.10);
+            --accent-glow: rgba(57,255,20,0.25);
+            --accent-glow2: rgba(57,255,20,0.06);
+            --accent-dark: rgba(57,255,20,0.80);
+            --text: #e8e8e8;
+            --text-2: #808080;
+            --text-3: #404040;
+            --danger: #ff4444;
+            --danger-dim: rgba(255,68,68,0.10);
+            --warning: #ffaa00;
+            --sidebar-w: 220px;
+            --topbar-h: 56px;
+            --font-mono: 'IBM Plex Mono', monospace;
+            --font-body: 'DM Sans', sans-serif;
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --radius: 8px;
+            --radius-lg: 12px;
+        }
+
+        /* ── Reset ─────────────────────────────────────────────── */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-size: 0.875rem;
+            font-weight: 400;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+            /* Grid overlay */
+            body::before {
+                content: '';
+                position: fixed;
+                inset: 0;
+                background-image: repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.018) 39px, rgba(255,255,255,0.018) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.018) 39px, rgba(255,255,255,0.018) 40px);
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            /* Corner glow */
+            body::after {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 400px;
+                height: 300px;
+                background: radial-gradient(ellipse at 0% 0%, rgba(57,255,20,0.04) 0%, transparent 65%);
+                pointer-events: none;
+                z-index: 0;
+            }
+
+        /* ── Sidebar ───────────────────────────────────────────── */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: var(--sidebar-w);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 300;
+            transition: transform 0.3s var(--ease-out);
+        }
+
+            /* Accent top stripe */
+            .sidebar::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+                background: linear-gradient(90deg, var(--accent), transparent 60%);
+            }
+
+        /* Brand */
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0 1.25rem;
+            height: var(--topbar-h);
+            border-bottom: 1px solid var(--border);
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+
+        .brand-mark {
+            position: relative;
+            width: 28px;
+            height: 28px;
+            flex-shrink: 0;
+        }
+
+            .brand-mark svg {
+                display: block;
+            }
+
+        .brand-text {
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text);
+        }
+
+            .brand-text span {
+                color: var(--accent);
+            }
+
+        /* Nav */
+        .sidebar-nav {
+            flex: 1;
+            padding: 1.25rem 0.75rem;
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+
+            .sidebar-nav::-webkit-scrollbar {
+                display: none;
+            }
+
+        .nav-section {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-3);
+            padding: 0 0.6rem;
+            margin: 1.2rem 0 0.4rem;
+        }
+
+            .nav-section:first-of-type {
+                margin-top: 0;
+            }
+
+        .nav-link-item {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.55rem 0.75rem;
+            border-radius: var(--radius);
+            color: var(--text-2);
+            font-size: 0.82rem;
+            font-weight: 500;
+            text-decoration: none;
+            position: relative;
+            transition: color 0.18s, background 0.18s;
+            cursor: pointer;
+        }
+
+            .nav-link-item:hover {
+                color: var(--text);
+                background: rgba(255,255,255,0.04);
+            }
+
+            .nav-link-item.active {
+                color: var(--accent);
+                background: var(--accent-dim);
+            }
+
+                .nav-link-item.active::before {
+                    content: '';
+                    position: absolute;
+                    left: 0;
+                    top: 15%;
+                    bottom: 15%;
+                    width: 2px;
+                    background: var(--accent);
+                    border-radius: 0 2px 2px 0;
+                    box-shadow: 0 0 12px var(--accent-glow);
+                }
+
+            .nav-link-item svg {
+                flex-shrink: 0;
+                opacity: 0.6;
+                transition: opacity 0.18s;
+            }
+
+            .nav-link-item:hover svg, .nav-link-item.active svg {
+                opacity: 1;
+            }
+
+        .nav-badge {
+            margin-left: auto;
+            font-family: var(--font-mono);
+            font-size: 0.55rem;
+            font-weight: 600;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            background: var(--surface-3);
+            color: var(--text-3);
+            border: 1px solid var(--border);
+            letter-spacing: 0.05em;
+        }
+
+        /* Sidebar bottom */
+        .sidebar-bottom {
+            padding: 0.75rem;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 0.75rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 0.5rem;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+            animation: statusPulse 2.5s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes statusPulse {
+            0%,100% {
+                opacity: 1;
+                box-shadow: 0 0 8px var(--accent-glow);
+            }
+
+            50% {
+                opacity: 0.6;
+                box-shadow: 0 0 16px var(--accent-glow), 0 0 28px var(--accent-glow2);
+            }
+        }
+
+        .status-text {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            color: var(--text-2);
+            flex: 1;
+        }
+
+            .status-text strong {
+                display: block;
+                color: var(--accent);
+                font-size: 0.65rem;
+            }
+
+        /* ── Topbar ────────────────────────────────────────────── */
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: var(--sidebar-w);
+            right: 0;
+            height: var(--topbar-h);
+            background: rgba(14,14,14,0.92);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.75rem;
+            z-index: 200;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .topbar-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-2);
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .breadcrumb-nav {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .breadcrumb-root {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            color: var(--text-3);
+            letter-spacing: 0.05em;
+        }
+
+        .breadcrumb-sep {
+            color: var(--text-3);
+            font-size: 0.7rem;
+        }
+
+        .breadcrumb-current {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            color: var(--accent);
+            letter-spacing: 0.05em;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* Org chip in topbar */
+        .org-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.85rem 0.35rem 0.55rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .org-avatar {
+            width: 22px;
+            height: 22px;
+            background: var(--accent-dim);
+            border: 1px solid rgba(57,255,20,0.2);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .org-name {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--text);
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .btn-logout {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.38rem 0.9rem;
+            background: transparent;
+            border: 1px solid var(--border-2);
+            border-radius: var(--radius);
+            color: var(--text-2);
+            font-family: var(--font-body);
+            font-size: 0.78rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: border-color 0.18s, color 0.18s, background 0.18s;
+        }
+
+            .btn-logout:hover {
+                border-color: rgba(255,68,68,0.4);
+                color: var(--danger);
+                background: var(--danger-dim);
+            }
+
+        /* ── Main content wrapper ──────────────────────────────── */
+        .admin-main {
+            margin-left: var(--sidebar-w);
+            margin-top: var(--topbar-h);
+            flex: 1;
+            min-height: calc(100vh - var(--topbar-h));
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content-area {
+            padding: 2rem 1.75rem 3rem;
+            flex: 1;
+        }
+
+        /* ── Shared card / button / label components ───────────── */
+        .page-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .page-eyebrow {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 0.35rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+            .page-eyebrow::before {
+                content: '';
+                display: inline-block;
+                width: 16px;
+                height: 1px;
+                background: var(--accent);
+            }
+
+        .page-title {
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--text);
+            line-height: 1.15;
+        }
+
+        .page-subtitle {
+            font-size: 0.82rem;
+            color: var(--text-2);
+            margin-top: 0.3rem;
+        }
+
+        .admin-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.25s, transform 0.25s var(--ease-spring), box-shadow 0.25s;
+        }
+
+            .admin-card:hover {
+                border-color: rgba(57,255,20,0.18);
+                transform: translateY(-2px);
+                box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(57,255,20,0.06);
+            }
+
+            .admin-card .card-shine {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(57,255,20,0.25), transparent);
+                opacity: 0;
+                transition: opacity 0.3s;
+            }
+
+            .admin-card:hover .card-shine {
+                opacity: 1;
+            }
+
+        .card-header-eco {
+            padding: 1rem 1.4rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title-eco {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: var(--text);
+            text-transform: uppercase;
+        }
+
+        .card-body-eco {
+            padding: 1.4rem;
+        }
+
+        .btn-accent {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 1.25rem;
+            background: var(--accent);
+            color: #050505;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 0.03em;
+            border: none;
+            border-radius: var(--radius);
+            text-decoration: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s var(--ease-spring), box-shadow 0.2s;
+        }
+
+            .btn-accent::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+            }
+
+            .btn-accent:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 28px var(--accent-glow);
+                color: #050505;
+            }
+
+        .mono-label {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-3);
+        }
+
+        /* Animations */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .anim-fade-up {
+            animation: fadeUp 0.5s var(--ease-out) both;
+        }
+
+        .anim-delay-1 {
+            animation-delay: 0.07s;
+        }
+
+        .anim-delay-2 {
+            animation-delay: 0.14s;
+        }
+
+        .anim-delay-3 {
+            animation-delay: 0.21s;
+        }
+
+        .anim-delay-4 {
+            animation-delay: 0.28s;
+        }
+
+        /* ── Responsive ────────────────────────────────────────── */
+        @media (max-width: 900px) {
+            .sidebar {
+                transform: translateX(calc(-1 * var(--sidebar-w)));
+                box-shadow: 4px 0 40px rgba(0,0,0,0.7);
+            }
+
+                .sidebar.open {
+                    transform: translateX(0);
+                }
+
+            .topbar {
+                left: 0;
+            }
+
+            .admin-main {
+                margin-left: 0;
+            }
+
+            .topbar-toggle {
+                display: flex;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .content-area {
+                padding: 1.25rem 1rem 2rem;
+            }
+
+            .org-name {
+                display: none;
+            }
+        }
+
+        /* Sidebar backdrop */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            z-index: 299;
+        }
+
+            .sidebar-overlay.visible {
+                display: block;
+            }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SIDEBAR
+    ═══════════════════════════════════════════════════════════ -->
+    <aside class="sidebar" id="sidebar">
+
+        <!-- Brand — links back to manager dashboard -->
+        <a href="{% url 'manager_dashboard' %}" class="sidebar-brand">
+            <div class="brand-mark">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <rect width="28" height="28" rx="6" fill="rgba(57,255,20,0.1)" />
+                    <path d="M7 19 L11 13 L15 16 L19 9 L22 12"
+                          stroke="#39ff14" stroke-width="1.8"
+                          stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                    <circle cx="22" cy="9" r="2" fill="#39ff14" />
+                    <path d="M6 21 h16" stroke="rgba(57,255,20,0.3)" stroke-width="1" stroke-linecap="round" />
+                </svg>
+            </div>
+            <span class="brand-text">Eco<span>Track</span></span>
+        </a>
+
+        <!-- Navigation — manager-scoped links only -->
+        <nav class="sidebar-nav">
+
+            <div class="nav-section">Manager</div>
+
+            <a href="{% url 'manager_dashboard' %}"
+               class="nav-link-item {% block nav_dashboard %}{% endblock %}">
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                    <rect x="1" y="1" width="5.5" height="5.5" rx="1.2" fill="currentColor" />
+                    <rect x="8.5" y="1" width="5.5" height="5.5" rx="1.2" fill="currentColor" opacity=".45" />
+                    <rect x="1" y="8.5" width="5.5" height="5.5" rx="1.2" fill="currentColor" opacity=".45" />
+                    <rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1.2" fill="currentColor" opacity=".45" />
+                </svg>
+                Dashboard
+            </a>
+
+            <a href="{% url 'add_activity' %}"
+               class="nav-link-item {% block nav_add_activity %}{% endblock %}">
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                    <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.3" fill="none" />
+                    <path d="M7.5 4.5v6M4.5 7.5h6"
+                          stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+                </svg>
+                Log Activity
+            </a>
+
+            <div class="nav-section">Reports</div>
+
+            <a href="#" class="nav-link-item">
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                    <path d="M1.5 12 L4.5 8 L7.5 10 L10.5 5 L13.5 7"
+                          stroke="currentColor" stroke-width="1.3"
+                          stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                    <path d="M1.5 12.5 h12" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".4" />
+                </svg>
+                Analytics
+                <span class="nav-badge">SOON</span>
+            </a>
+
+            <a href="#" class="nav-link-item">
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                    <rect x="2" y="1.5" width="11" height="12" rx="1.5"
+                          stroke="currentColor" stroke-width="1.3" fill="none" />
+                    <path d="M5 5.5h5M5 8h5M5 10.5h3"
+                          stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".7" />
+                </svg>
+                Export
+                <span class="nav-badge">SOON</span>
+            </a>
+
+        </nav>
+
+        <!-- System status -->
+        <div class="sidebar-bottom">
+            <div class="system-status">
+                <span class="status-dot"></span>
+                <div class="status-text">
+                    <strong>SYSTEM ONLINE</strong>
+                    All services operational
+                </div>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- Mobile overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         TOPBAR
+    ═══════════════════════════════════════════════════════════ -->
+    <header class="topbar">
+
+        <div class="topbar-left">
+            <button class="topbar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M2 4.5h14M2 9h14M2 13.5h14"
+                          stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+            </button>
+
+            <div class="breadcrumb-nav">
+                <span class="breadcrumb-root">EcoTrack</span>
+                <span class="breadcrumb-sep">/</span>
+                <span class="breadcrumb-current">{% block breadcrumb %}Dashboard{% endblock %}</span>
+            </div>
+        </div>
+
+        <div class="topbar-right">
+
+            {# org_name passed from every manager view — shows the dept's organisation #}
+            <div class="org-chip">
+                <div class="org-avatar">{{ org_name|slice:":1"|upper }}</div>
+                <span class="org-name">{{ org_name }}</span>
+            </div>
+
+            <a href="{% url 'logout' %}" class="btn-logout">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <path d="M4.5 1.5H2a1 1 0 00-1 1v8a1 1 0 001 1h2.5M9 9.5l3-3-3-3M12 6.5H5.5"
+                          stroke="currentColor" stroke-width="1.3"
+                          stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Logout
+            </a>
+        </div>
+
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         MAIN CONTENT
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="admin-main">
+        <div class="content-area">
+
+            <!-- Django messages -->
+            {% if messages %}
+            {% for message in messages %}
+            <div style="display:flex;align-items:center;gap:0.5rem;
+                    padding:0.65rem 1rem;border-radius:var(--radius);
+                    margin-bottom:1.25rem;font-size:0.8rem;
+                    {% if message.tags == 'error' %}
+                      background:rgba(255,68,68,0.08);border:1px solid rgba(255,68,68,0.2);color:#ff4444;
+                    {% else %}
+                      background:rgba(57,255,20,0.07);border:1px solid rgba(57,255,20,0.2);color:var(--accent);
+                    {% endif %}">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" stroke-width="1.3" />
+                    <path d="M6.5 3.5v3.5M6.5 9h.01" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                </svg>
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmq17jAgBHTMHiJpBsIL3q2dK6Cx"
+            crossorigin="anonymous"></script>
+
+    <script>
+    const sidebar   = document.getElementById('sidebar');
+    const overlay   = document.getElementById('sidebarOverlay');
+    const toggleBtn = document.getElementById('sidebarToggle');
+
+    function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('visible');    document.body.style.overflow = 'hidden'; }
+    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('visible'); document.body.style.overflow = ''; }
+
+    toggleBtn.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+    overlay.addEventListener('click', closeSidebar);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+
+</body>
+</html>

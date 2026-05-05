@@ -1,12 +1,13 @@
 ﻿from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
+from django.utils import timezone
 
-from .models import UserProfile, Organization, Department
+from .models import UserProfile, Organization, Department, ActivityLog
 from .forms import UserRegistrationForm, OrganizationForm
 
 
@@ -77,9 +78,9 @@ def login_view(request):
                     or user.is_superuser:
                 return redirect('dashboard')
 
-            # Department Manager → branch dashboard
+            # Department Manager → manager dashboard
             if Department.objects.filter(managed_by=user).exists():
-                return redirect('branch_dashboard')
+                return redirect('manager_dashboard')
 
             # Fallback
             return redirect('dashboard')
@@ -104,7 +105,7 @@ def logout_view(request):
 def dashboard(request):
     # Managers must go to their own dashboard
     if Department.objects.filter(managed_by=request.user).exists():
-        return redirect('branch_dashboard')
+        return redirect('manager_dashboard')
 
     admin_profile = getattr(request.user, 'userprofile', None)
 
@@ -135,17 +136,135 @@ def dashboard(request):
 
 
 # ─────────────────────────────────────────────────────────────────
-# 6. Branch (Manager) Dashboard
+# 6. Branch (Manager) Dashboard — legacy redirect kept for safety
 # ─────────────────────────────────────────────────────────────────
 @login_required
 def branch_dashboard(request):
+    """
+    Legacy entry point.  All new code redirects to manager_dashboard.
+    Kept so any bookmarked /branch/dashboard/ URLs still work.
+    """
+    return redirect('manager_dashboard')
+
+
+# ─────────────────────────────────────────────────────────────────
+# 11. Manager Dashboard
+#     Shows the manager's own department data only.
+#     Computes current-month total emissions for the summary card.
+# ─────────────────────────────────────────────────────────────────
+@login_required
+def manager_dashboard(request):
+    # Resolve this manager's department
     dept = Department.objects.filter(managed_by=request.user).first()
     if not dept:
-        return redirect('login')
+        # Not a manager — send them to the admin area
+        return redirect('dashboard')
 
-    return render(request, 'branch/dashboard.html', {
-        'department':   dept,
-        'manager_name': request.user.username,
+    # ── Branding: org name for header chip ────────────────────────
+    # Managers don't have a UserProfile, so we walk through the dept.
+    org_name = dept.organization.name if dept.organization else "EcoTrack"
+
+    # ── All activity logs for this department ─────────────────────
+    all_logs = ActivityLog.objects.filter(department=dept)
+
+    # ── Current-month totals ──────────────────────────────────────
+    now               = timezone.now()
+    monthly_logs      = all_logs.filter(
+        activity_date__year  = now.year,
+        activity_date__month = now.month,
+    )
+    monthly_emissions = monthly_logs.aggregate(
+        total=Sum('emissions_amount')
+    )['total'] or 0.0
+
+    # ── Per-category breakdown (current month) ────────────────────
+    categories = ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel']
+    category_totals = {}
+    for cat in categories:
+        cat_total = monthly_logs.filter(category=cat).aggregate(
+            total=Sum('emissions_amount')
+        )['total'] or 0.0
+        category_totals[cat] = round(cat_total, 2)
+
+    # ── Last 10 entries for the activity table ────────────────────
+    recent_logs = all_logs[:10]
+
+    return render(request, 'manager/dashboard.html', {
+        'dept':              dept,
+        'org_name':          org_name,
+        'manager_name':      request.user.username,
+        'monthly_emissions': round(monthly_emissions, 2),
+        'log_count':         all_logs.count(),
+        'monthly_count':     monthly_logs.count(),
+        'category_totals':   category_totals,
+        'recent_logs':       recent_logs,
+        'current_month':     now.strftime('%B %Y'),
+    })
+
+
+# ─────────────────────────────────────────────────────────────────
+# 12. Add Activity Log
+#     Handles the data-entry form POST.
+#     Validates quantity > 0; emissions_amount is auto-calculated
+#     by ActivityLog.save() — the view never touches that field.
+# ─────────────────────────────────────────────────────────────────
+@login_required
+def add_activity(request):
+    dept = Department.objects.filter(managed_by=request.user).first()
+    if not dept:
+        return redirect('dashboard')
+
+    org_name = dept.organization.name if dept.organization else "EcoTrack"
+
+    if request.method == 'POST':
+        category      = request.POST.get('category', '').strip()
+        quantity_raw  = request.POST.get('quantity', '').strip()
+        activity_date = request.POST.get('activity_date', '').strip()
+
+        # ── Validation ────────────────────────────────────────────
+        valid_categories = ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel']
+        errors = []
+
+        if not category or category not in valid_categories:
+            errors.append("Please select a valid category.")
+
+        if not activity_date:
+            errors.append("Activity date is required.")
+
+        quantity = None
+        if not quantity_raw:
+            errors.append("Quantity is required.")
+        else:
+            try:
+                quantity = float(quantity_raw)
+                if quantity <= 0:
+                    errors.append("Quantity must be a positive number greater than zero.")
+            except ValueError:
+                errors.append("Quantity must be a valid number.")
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+        else:
+            # ── Save — emissions_amount auto-set by model.save() ──
+            ActivityLog.objects.create(
+                department    = dept,
+                logged_by     = request.user,
+                category      = category,
+                quantity      = quantity,
+                activity_date = activity_date,
+            )
+            messages.success(
+                request,
+                f"Activity logged: {quantity} units of {category} — "
+                f"CO₂ calculated automatically."
+            )
+            return redirect('manager_dashboard')
+
+    return render(request, 'manager/add_activity.html', {
+        'dept':     dept,
+        'org_name': org_name,
+        'categories': ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel'],
     })
 
 
