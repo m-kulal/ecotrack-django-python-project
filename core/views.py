@@ -550,3 +550,107 @@ def manager_analytics(request):
         'month_data':      json.dumps(month_values),
     }
     return render(request, 'manager/analytics.html', context)
+
+# ─────────────────────────────────────────────────────────────────
+# 13. Edit Activity Log
+#     Only the owning manager may edit their own department's log.
+#     emissions_amount is never touched here — ActivityLog.save()
+#     recalculates it automatically from the new quantity/category.
+# ─────────────────────────────────────────────────────────────────
+@login_required
+def edit_activity(request, log_id):
+    # Resolve the manager's department first
+    dept = Department.objects.filter(managed_by=request.user).first()
+    if not dept:
+        messages.error(request, "Only department managers can edit activity logs.")
+        return redirect('dashboard')
+
+    # Fetch the log — 404 if it doesn't exist OR belongs to another dept
+    log = get_object_or_404(ActivityLog, id=log_id, department=dept)
+
+    VALID_CATEGORIES = ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel']
+
+    if request.method == 'POST':
+        category     = request.POST.get('category', '').strip()
+        quantity_raw = request.POST.get('quantity', '').strip()
+        date_raw     = request.POST.get('activity_date', '').strip()
+
+        errors = []
+
+        if not category or category not in VALID_CATEGORIES:
+            errors.append("Please select a valid category.")
+
+        if not date_raw:
+            errors.append("Activity date is required.")
+
+        quantity = None
+        if not quantity_raw:
+            errors.append("Quantity is required.")
+        else:
+            try:
+                quantity = float(quantity_raw)
+                if quantity <= 0:
+                    errors.append("Quantity must be greater than zero.")
+            except ValueError:
+                errors.append("Quantity must be a valid number.")
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+        else:
+            # Update fields — save() auto-recalculates emissions_amount
+            log.category      = category
+            log.quantity      = quantity
+            log.activity_date = date_raw
+            log.save()
+            messages.success(
+                request,
+                f"Log updated: {quantity} units of {category} — "
+                f"CO₂ recalculated to {log.emissions_amount} kg."
+            )
+            return redirect('manager_dashboard')
+
+    return render(request, 'manager/edit_activity.html', {
+        'log':        log,
+        'dept':       dept,
+        'org_name':   dept.organization.name,
+        'categories': VALID_CATEGORIES,
+    })
+
+
+# ─────────────────────────────────────────────────────────────────
+# 14. Delete Activity Log
+#     GET  → returns JSON {category, quantity, emissions_amount}
+#            so the Bootstrap modal can show a confirmation summary
+#            without a full page load.
+#     POST → deletes the record and redirects with a flash message.
+#     Security: the get_object_or_404 scopes to dept so a manager
+#     can never delete another department's logs.
+# ─────────────────────────────────────────────────────────────────
+from django.http import JsonResponse
+
+@login_required
+def delete_activity(request, log_id):
+    dept = Department.objects.filter(managed_by=request.user).first()
+    if not dept:
+        if request.method == 'GET':
+            return JsonResponse({'error': 'Forbidden'}, status=403)
+        messages.error(request, "Only department managers can delete activity logs.")
+        return redirect('dashboard')
+
+    log = get_object_or_404(ActivityLog, id=log_id, department=dept)
+
+    if request.method == 'POST':
+        summary = f"{log.category} · {log.quantity} units · {log.activity_date}"
+        log.delete()
+        messages.success(request, f"Deleted: {summary}")
+        return redirect('manager_dashboard')
+
+    # GET — return log details as JSON for the modal
+    return JsonResponse({
+        'id':               log.id,
+        'category':         log.category,
+        'quantity':         log.quantity,
+        'emissions_amount': log.emissions_amount,
+        'activity_date':    str(log.activity_date),
+    })

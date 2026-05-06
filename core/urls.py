@@ -26,4 +26,6 @@ urlpatterns = [
     path('manager/dashboard/',    views.manager_dashboard, name='manager_dashboard'),
     path('manager/add-activity/', views.add_activity,      name='add_activity'),
     path('manager/analytics/', views.manager_analytics, name='manager_analytics'),
+    path('activity/<int:log_id>/edit/',   views.edit_activity,   name='edit_activity'),
+    path('activity/<int:log_id>/delete/', views.delete_activity, name='delete_activity')
 ]

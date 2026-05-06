@@ -4,13 +4,13 @@
     "\\core",
     "\\core\\templates",
     "\\core\\templates\\admin",
-    "\\core\\templates\\branch",
     "\\core\\templates\\core",
+    "\\core\\templates\\manager",
     "\\ecotrack",
     "\\ecotrack\\ecotrack",
     "\\ecotrack\\ecotrack\\__pycache__",
     "\\ecotrack_main"
   ],
-  "SelectedNode": "\\core\\models.py",
+  "SelectedNode": "\\core\\templates\\core\\register.html",
   "PreviewInSolutionExplorer": false
 }

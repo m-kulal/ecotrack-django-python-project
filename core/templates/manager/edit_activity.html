@@ -1,0 +1,156 @@
+﻿{% extends 'manager/base_manager.html' %}
+
+{% block page_title %}Edit Activity{% endblock %}
+{% block breadcrumb %}Edit Activity{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<div style="max-width: 560px; margin: 0 auto;">
+
+    {# Page header #}
+    <div style="margin-bottom: 1.75rem;">
+        <div style="font-family:var(--font-mono);font-size:1.05rem;font-weight:700;
+                    color:var(--text);letter-spacing:-0.02em;">Edit Activity Log</div>
+        <div style="font-size:0.78rem;color:var(--text-2);margin-top:0.2rem;">
+            {{ dept.name }} &bull; Log #{{ log.id }}
+        </div>
+    </div>
+
+    {# Flash messages #}
+    {% if messages %}
+    {% for msg in messages %}
+    <div style="padding:0.65rem 1rem;border-radius:var(--radius);margin-bottom:1rem;
+                    {% if msg.tags == 'error' %}
+                    background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:#ff6b6b;
+                    {% else %}
+                    background:rgba(57,255,20,0.08);border:1px solid rgba(57,255,20,0.25);color:var(--accent);
+                    {% endif %}
+                    font-size:0.8rem;">
+        {{ msg }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="admin-card">
+        <div class="card-header-eco">
+            <span class="card-title-eco">Update Entry</span>
+            {# Live CO₂ preview chip #}
+            <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-2);">
+                Estimated CO₂:
+                <span id="co2-preview" style="color:var(--accent);font-weight:700;">
+                    {{ log.emissions_amount|floatformat:4 }} kg
+                </span>
+            </span>
+        </div>
+        <div class="card-body-eco">
+            <form method="POST" action="{% url 'edit_activity' log.id %}">
+                {% csrf_token %}
+
+                {# Category #}
+                <div style="margin-bottom:1.25rem;">
+                    <label style="display:block;font-family:var(--font-mono);font-size:0.7rem;
+                                  font-weight:600;color:var(--text-2);text-transform:uppercase;
+                                  letter-spacing:0.08em;margin-bottom:0.4rem;">
+                        Category
+                    </label>
+                    <select name="category" id="category-select" required
+                            onchange="updatePreview()"
+                            style="width:100%;padding:0.6rem 0.85rem;
+                                   background:var(--surface-2);border:1px solid var(--border-2);
+                                   border-radius:var(--radius);color:var(--text);
+                                   font-family:var(--font-mono);font-size:0.82rem;
+                                   appearance:none;cursor:pointer;outline:none;">
+                        {% for cat in categories %}
+                        <option value="{{ cat }}" {% if cat == log.category %}selected{% endif %}>
+                            {{ cat }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {# Quantity #}
+                <div style="margin-bottom:1.25rem;">
+                    <label style="display:block;font-family:var(--font-mono);font-size:0.7rem;
+                                  font-weight:600;color:var(--text-2);text-transform:uppercase;
+                                  letter-spacing:0.08em;margin-bottom:0.4rem;">
+                        Quantity
+                        <span id="unit-label" style="color:var(--text-3);font-weight:400;
+                                                     text-transform:none;letter-spacing:0;">(units)</span>
+                    </label>
+                    <input type="number" name="quantity" id="quantity-input"
+                           value="{{ log.quantity }}" min="0.001" step="any" required
+                           oninput="updatePreview()"
+                           style="width:100%;padding:0.6rem 0.85rem;
+                                  background:var(--surface-2);border:1px solid var(--border-2);
+                                  border-radius:var(--radius);color:var(--text);
+                                  font-family:var(--font-mono);font-size:0.82rem;
+                                  outline:none;box-sizing:border-box;">
+                </div>
+
+                {# Activity Date #}
+                <div style="margin-bottom:1.75rem;">
+                    <label style="display:block;font-family:var(--font-mono);font-size:0.7rem;
+                                  font-weight:600;color:var(--text-2);text-transform:uppercase;
+                                  letter-spacing:0.08em;margin-bottom:0.4rem;">
+                        Activity Date
+                    </label>
+                    <input type="date" name="activity_date"
+                           value="{{ log.activity_date|date:'Y-m-d' }}" required
+                           style="width:100%;padding:0.6rem 0.85rem;
+                                  background:var(--surface-2);border:1px solid var(--border-2);
+                                  border-radius:var(--radius);color:var(--text);
+                                  font-family:var(--font-mono);font-size:0.82rem;
+                                  outline:none;box-sizing:border-box;
+                                  color-scheme:dark;">
+                </div>
+
+                {# Actions #}
+                <div style="display:flex;gap:0.75rem;justify-content:flex-end;flex-wrap:wrap;">
+                    <a href="{% url 'manager_dashboard' %}"
+                       style="padding:0.5rem 1.1rem;background:transparent;
+                              border:1px solid var(--border-2);border-radius:var(--radius);
+                              color:var(--text-2);font-family:var(--font-mono);font-size:0.78rem;
+                              text-decoration:none;display:inline-flex;align-items:center;">
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn-accent">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# Live CO₂ preview — mirrors the emission factors in models.py #}
+<script>
+const EMISSION_FACTORS = {
+    'Electricity': 0.85,
+    'Water':       0.30,
+    'Petrol':      2.31,
+    'Diesel':      2.68,
+    'Travel':      0.18,
+};
+
+const UNIT_LABELS = {
+    'Electricity': 'kWh',
+    'Water':       'litres',
+    'Petrol':      'litres',
+    'Diesel':      'litres',
+    'Travel':      'km',
+};
+
+function updatePreview() {
+    const category = document.getElementById('category-select').value;
+    const quantity = parseFloat(document.getElementById('quantity-input').value) || 0;
+    const factor   = EMISSION_FACTORS[category] || 0;
+    const co2      = (quantity * factor).toFixed(4);
+
+    document.getElementById('co2-preview').textContent  = co2 + ' kg';
+    document.getElementById('unit-label').textContent   = '(' + (UNIT_LABELS[category] || 'units') + ')';
+}
+
+// Run once on load to set the correct unit label for the pre-filled category
+updatePreview();
+</script>
+{% endblock %}
