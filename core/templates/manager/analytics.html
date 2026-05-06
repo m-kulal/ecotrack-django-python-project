@@ -6,6 +6,7 @@
 
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 <style>
     /* ── Content width cap ───────────────────────────────────────────
@@ -292,6 +293,18 @@
         </div>
 
     </div>{# /.charts-grid #}
+
+    {# ── Export button — shown only when there is data to export ── #}
+    <div style="text-align:center;margin-top:2rem;">
+        <a href="{% url 'export_csv' %}"
+           class="btn btn-outline-success px-5 py-2"
+           style="font-family:var(--font-mono);font-size:0.82rem;
+                  border-color:rgba(57,255,20,0.4);color:var(--accent);
+                  letter-spacing:0.02em;transition:background 0.18s,border-color 0.18s;">
+            <i class="fas fa-file-download" style="margin-right:0.5rem;"></i>
+            Download Departmental Report (.CSV)
+        </a>
+    </div>
 
     {% else %}
 

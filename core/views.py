@@ -628,7 +628,6 @@ def edit_activity(request, log_id):
 #     can never delete another department's logs.
 # ─────────────────────────────────────────────────────────────────
 from django.http import JsonResponse
-
 @login_required
 def delete_activity(request, log_id):
     dept = Department.objects.filter(managed_by=request.user).first()
@@ -654,3 +653,124 @@ def delete_activity(request, log_id):
         'emissions_amount': log.emissions_amount,
         'activity_date':    str(log.activity_date),
     })
+# ─────────────────────────────────────────────────────────────────
+# 15. Export CSV  (Org-scoped Environmental Audit Report)
+#
+#     Access rules
+#     ────────────
+#     • Manager  → resolves org via their Department.organization FK
+#                  (managers never have a UserProfile)
+#     • Admin    → resolves org via UserProfile.organization
+#
+#     Both roles land at the same queryset: all ActivityLog rows
+#     whose department belongs to the resolved organisation.
+#
+#     CSV structure
+#     ─────────────
+#     Row 1  Title block
+#     Row 2  Meta  (org name + generation date)
+#     Row 3  Blank spacer
+#     Row 4  Column headers
+#     …      One data row per ActivityLog entry (date-desc order)
+#     Last   TOTAL EMISSIONS footer
+# ─────────────────────────────────────────────────────────────────
+import csv
+from django.http import HttpResponse
+
+@login_required
+def export_csv(request):
+
+    UNITS = {
+        'Electricity': 'kWh',
+        'Water':       'L',
+        'Petrol':      'L',
+        'Diesel':      'L',
+        'Travel':      'km',
+    }
+
+    # ── 1. Resolve organisation ──────────────────────────────────
+    # Managers have no UserProfile — resolve org through their dept.
+    # Admins have a UserProfile — resolve org directly.
+    org      = None
+    org_name = 'Unknown'
+
+    dept_as_manager = Department.objects.select_related('organization').filter(
+        managed_by=request.user
+    ).first()
+
+    if dept_as_manager:
+        # Caller is a department manager
+        org      = dept_as_manager.organization
+        org_name = org.name
+    elif hasattr(request.user, 'userprofile'):
+        # Caller is an org admin
+        org      = request.user.userprofile.organization
+        org_name = org.name
+    else:
+        messages.error(request, "Your account is not linked to any organisation.")
+        return redirect('dashboard')
+
+    # ── 2. Fetch all logs for every department in this org ───────
+    # Using department__organization scopes the query to the org
+    # without a separate Department lookup.
+    logs = (
+        ActivityLog.objects
+        .filter(department__organization=org)
+        .select_related('department', 'logged_by')
+        .order_by('-activity_date', '-date_recorded')
+    )
+
+    # ── 3. Pre-compute total for the footer row ──────────────────
+    total_emissions = round(
+        logs.aggregate(t=Sum('emissions_amount'))['t'] or 0, 4
+    )
+
+    # ── 4. Build dynamic filename ────────────────────────────────
+    # Sanitise org name: keep alphanumerics, replace everything else
+    # with underscores so the filename is safe on all OS/browsers.
+    safe_org = "".join(c if c.isalnum() else "_" for c in org_name)
+    filename = f"EcoTrack_Report_{safe_org}_{date.today().isoformat()}.csv"
+
+    # ── 5. Stream directly into HttpResponse ────────────────────
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+
+    # Row 1 — Report title
+    writer.writerow(['EcoTrack Environmental Audit Report'])
+
+    # Row 2 — Meta: org name + generation date
+    writer.writerow([
+        'Organization:', org_name,
+        'Generated:',    date.today().strftime('%Y-%m-%d'),
+    ])
+
+    # Row 3 — Blank spacer (improves readability when opened in Excel)
+    writer.writerow([])
+
+    # Row 4 — Column headers
+    writer.writerow([
+        'Date',
+        'Department',
+        'Category',
+        'Quantity',
+        'Unit',
+        'Emissions (kg CO2)',
+    ])
+
+    # Data rows
+    for row in logs:
+        writer.writerow([
+            row.activity_date.strftime('%Y-%m-%d'),   # explicit strftime avoids AttributeError
+            row.department.name,
+            row.category,
+            row.quantity,
+            UNITS.get(row.category, 'units'),
+            row.emissions_amount,
+        ])
+
+    # Footer row — total emissions across all rows
+    writer.writerow(['TOTAL EMISSIONS', '', '', '', '', total_emissions])
+
+    return response

@@ -722,7 +722,7 @@
 
             <div class="nav-section">Reports</div>
 
-            <a href="{% url 'manager_analytics' %}" class="nav-link-item">
+            <a href="{% url 'manager_analytics' %}" class="nav-link-item {% block nav_analytics %}{% endblock %}">
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                     <path d="M1.5 12 L4.5 8 L7.5 10 L10.5 5 L13.5 7"
                           stroke="currentColor" stroke-width="1.3"
@@ -732,16 +732,6 @@
                 Analytics
             </a>
 
-            <a href="#" class="nav-link-item">
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                    <rect x="2" y="1.5" width="11" height="12" rx="1.5"
-                          stroke="currentColor" stroke-width="1.3" fill="none" />
-                    <path d="M5 5.5h5M5 8h5M5 10.5h3"
-                          stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".7" />
-                </svg>
-                Export
-                <span class="nav-badge">SOON</span>
-            </a>
 
         </nav>
 
@@ -838,16 +828,16 @@
             crossorigin="anonymous"></script>
 
     <script>
-    const sidebar   = document.getElementById('sidebar');
-    const overlay   = document.getElementById('sidebarOverlay');
-    const toggleBtn = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const toggleBtn = document.getElementById('sidebarToggle');
 
-    function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('visible');    document.body.style.overflow = 'hidden'; }
-    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('visible'); document.body.style.overflow = ''; }
+        function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('visible'); document.body.style.overflow = 'hidden'; }
+        function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('visible'); document.body.style.overflow = ''; }
 
-    toggleBtn.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
-    overlay.addEventListener('click', closeSidebar);
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+        toggleBtn.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+        overlay.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
     </script>
 
     {% block extra_scripts %}{% endblock %}
