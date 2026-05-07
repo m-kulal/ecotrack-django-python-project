@@ -943,3 +943,112 @@ def eco_insights(request):
         'ai_insight':       ai_insight,
         'has_data':         any(item['total'] > 0 for item in monthly_data),
     })
+
+# ─────────────────────────────────────────────────────────────────
+# admin_analytics  —  Global Analytics (Admin)
+#
+# ADD this function to views.py (alongside your existing views).
+# All imports used here already exist at the top of your views.py.
+# ─────────────────────────────────────────────────────────────────
+
+@login_required
+def admin_analytics(request):
+    """
+    Global Analytics page for Org Admins.
+
+    Datasets passed to the template as JSON:
+      1. dept_labels / dept_data   → League table (bar chart)
+      2. cat_labels  / cat_data    → Category breakdown (doughnut)
+      3. trend_labels / trend_data → 6-month org-wide trend (line)
+    """
+
+    # ── Guard: must be an Admin ───────────────────────────────────
+    # Redirect plain managers to their own dashboard.
+    if Department.objects.filter(managed_by=request.user).exists():
+        return redirect('manager_dashboard')
+
+    admin_profile = getattr(request.user, 'userprofile', None)
+    org = admin_profile.organization if admin_profile else None
+    org_name = org.name if org else "EcoTrack"
+
+    # Base queryset — all logs that belong to this organisation
+    if org:
+        org_logs = ActivityLog.objects.filter(department__organization=org)
+    else:
+        org_logs = ActivityLog.objects.none()
+
+    # ── Dataset 1: League Table — total emissions per department ──
+    dept_qs = (
+        org_logs
+        .values('department__name')
+        .annotate(total=Sum('emissions_amount'))
+        .order_by('-total')
+    )
+    dept_labels = [row['department__name'] for row in dept_qs]
+    dept_data   = [round(row['total'], 2) for row in dept_qs]
+
+    # ── Dataset 2: Category Breakdown ────────────────────────────
+    CATEGORIES = ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel']
+    cat_qs = (
+        org_logs
+        .values('category')
+        .annotate(total=Sum('emissions_amount'))
+        .order_by('category')
+    )
+    # Build ordered lists matching CATEGORIES (fill 0 if category absent)
+    cat_map = {row['category']: round(row['total'], 2) for row in cat_qs}
+    cat_labels = CATEGORIES
+    cat_data   = [cat_map.get(cat, 0.0) for cat in CATEGORIES]
+
+    # ── Dataset 3: 6-Month Org-wide Trend ────────────────────────
+    now = timezone.now()
+    trend_labels = []
+    trend_data   = []
+
+    for offset in range(5, -1, -1):           # oldest → newest
+        point = now - relativedelta(months=offset)
+        label = point.strftime('%b %Y')
+        total = (
+            org_logs
+            .filter(
+                activity_date__year=point.year,
+                activity_date__month=point.month,
+            )
+            .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
+        )
+        trend_labels.append(label)
+        trend_data.append(round(total, 2))
+
+    # ── Summary stats for the stat-row cards ─────────────────────
+    total_org_emissions = round(
+        org_logs.aggregate(total=Sum('emissions_amount'))['total'] or 0.0, 2
+    )
+    total_departments = Department.objects.filter(organization=org).count() if org else 0
+    total_logs        = org_logs.count()
+
+    # Top emitting department (for the highlight card)
+    top_dept = dept_labels[0] if dept_labels else "—"
+    top_dept_val = dept_data[0] if dept_data else 0.0
+
+    return render(request, 'admin/analytics.html', {
+        'admin_profile':       admin_profile,
+        'org_name':            org_name,
+
+        # Chart data — safe JSON strings
+        'dept_labels':         json.dumps(dept_labels),
+        'dept_data':           json.dumps(dept_data),
+        'cat_labels':          json.dumps(cat_labels),
+        'cat_data':            json.dumps(cat_data),
+        'trend_labels':        json.dumps(trend_labels),
+        'trend_data':          json.dumps(trend_data),
+
+        # Summary cards
+        'total_org_emissions': total_org_emissions,
+        'total_departments':   total_departments,
+        'total_logs':          total_logs,
+        'top_dept':            top_dept,
+        'top_dept_val':        top_dept_val,
+
+        # Empty-state flag — JS will check this before rendering
+        'has_data':            total_logs > 0,
+    })

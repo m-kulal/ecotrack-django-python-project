@@ -12,7 +12,7 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     
     path('dashboard/departments/', views.manage_departments, name='department_list'),
-    path('dashboard/analytics/', views.dashboard, name='analytics'),
+    path('dashboard/analytics/', views.admin_analytics, name='admin_analytics'),
     path('dashboard/goals/', views.dashboard, name='goals'),
     path('dashboard/export/', views.dashboard, name='export_center'),
     path('branch/dashboard/', views.branch_dashboard, name='branch_dashboard'),

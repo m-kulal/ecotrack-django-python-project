@@ -837,6 +837,12 @@
             aiContent.innerHTML = text;
         }
     });
+    // Add this to your Refresh button in insights.html
+    document.querySelector('.btn-refresh-cache').addEventListener('click', function () {
+        this.innerHTML = 'Analyzing Data...';
+        this.style.opacity = '0.6';
+        this.style.pointerEvents = 'none';
+    });
 </script>
 {% endif %}
 {% endblock %}
