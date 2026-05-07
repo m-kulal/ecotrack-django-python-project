@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Environments
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+bin/
+obj/
+
+# Database (Optional - keep local if you don't want it on GitHub)
+db.sqlite3
