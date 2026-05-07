@@ -774,3 +774,172 @@ def export_csv(request):
     writer.writerow(['TOTAL EMISSIONS', '', '', '', '', total_emissions])
 
     return response
+# ─────────────────────────────────────────────────────────────────
+# eco_insights  —  Insights & Recommendations (Manager)
+#
+# Paste this function block into views.py.
+# Also add this import at the top of views.py (with the other imports):
+#
+#   from django.core.cache import cache
+#   from .utils import get_gemini_recommendations
+#
+# ─────────────────────────────────────────────────────────────────
+
+from django.core.cache import cache
+from .utils import get_gemini_recommendations
+
+
+@login_required
+def eco_insights(request):
+    """
+    Insights & Recommendations page for department managers.
+
+    Data pipeline:
+    1. Resolve the manager's Department → Organisation.
+    2. Compute monthly total emissions for the last 6 months (bar chart).
+    3. Identify the top emitting category for the current month.
+    4. Build a plain-text stats summary and fetch (or serve cached)
+       Gemini AI recommendations.
+    5. Render insights.html with all context variables.
+    """
+
+    # ── 1. Guard: must be a department manager ────────────────────
+    dept = Department.objects.filter(managed_by=request.user).first()
+    if not dept:
+        return redirect('dashboard')
+
+    org_name = dept.organization.name if dept.organization else "EcoTrack"
+    now      = timezone.now()
+
+    # ── 2. Six-month rolling window ───────────────────────────────
+    # Build a list of (year, month) tuples for the last 6 months,
+    # oldest first, so the chart renders left-to-right chronologically.
+    months = []
+    for offset in range(5, -1, -1):                       # 5 … 0
+        point = now - relativedelta(months=offset)
+        months.append((point.year, point.month, point.strftime('%b %Y')))
+
+    monthly_data = []   # [{label, total}, …] — for JSON serialisation in template
+
+    for year, month, label in months:
+        total = (
+            ActivityLog.objects
+            .filter(
+                department__organization=dept.organization,
+                activity_date__year=year,
+                activity_date__month=month,
+            )
+            .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
+        )
+        monthly_data.append({'label': label, 'total': round(total, 2)})
+
+    # ── 3. Top emitting category — current month ──────────────────
+    categories = ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel']
+    current_month_logs = ActivityLog.objects.filter(
+        department__organization=dept.organization,
+        activity_date__year=now.year,
+        activity_date__month=now.month,
+    )
+
+    category_totals_raw = {}
+    for cat in categories:
+        cat_sum = (
+            current_month_logs.filter(category=cat)
+            .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
+        )
+        category_totals_raw[cat] = round(cat_sum, 2)
+
+    top_category     = max(category_totals_raw, key=category_totals_raw.get)
+    top_category_val = category_totals_raw[top_category]
+
+    # ── 4. Month-on-month delta ───────────────────────────────────
+    last_month   = now - relativedelta(months=1)
+    last_m_total = (
+        ActivityLog.objects
+        .filter(
+            department__organization=dept.organization,
+            activity_date__year=last_month.year,
+            activity_date__month=last_month.month,
+        )
+        .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
+    )
+    current_m_total = monthly_data[-1]['total']   # already computed above
+    delta_kg        = round(current_m_total - last_m_total, 2)
+    delta_pct       = (
+        round((delta_kg / last_m_total) * 100, 1)
+        if last_m_total > 0 else None
+    )
+
+    # ── 5. AI insight — cache for 6 hours ─────────────────────────
+    # ── 5. Prepare data for AI (Move this ABOVE the cache check) ──
+    has_data = any(item['total'] > 0 for item in monthly_data)
+    
+    if has_data:
+        stats_summary = (
+            f"Organisation: {org_name}\n"
+            f"Department: {dept.name}\n"
+            f"Report month: {now.strftime('%B %Y')}\n\n"
+            f"Current month total emissions: {current_m_total} kg CO₂\n"
+            f"Previous month total emissions: {round(last_m_total, 2)} kg CO₂\n"
+            f"Month-on-month change: {delta_kg:+.2f} kg CO₂"
+            + (f" ({delta_pct:+.1f}%)" if delta_pct is not None else "") + "\n\n"
+            f"Top emitting category this month: {top_category} "
+            f"({top_category_val} kg CO₂)\n\n"
+            f"Category breakdown (current month):\n"
+            + "\n".join(
+                f"  • {cat}: {val} kg CO₂"
+                for cat, val in category_totals_raw.items()
+            )
+            + f"\n\nLast 6 months totals (oldest → newest):\n"
+            + "\n".join(
+                f"  • {item['label']}: {item['total']} kg CO₂"
+                for item in monthly_data
+            )
+        )
+    else:
+        stats_summary = "No data available."
+
+    # ── 6. Cache Logic ──
+    cache_key = f"ai_insight_{request.user.id}"
+
+    # Handle the manual refresh button
+    if request.GET.get('refresh') == '1':
+        cache.delete(cache_key)
+        # Note: We don't redirect here anymore so the code below can 
+        # immediately generate the NEW insight for the user.
+
+    ai_insight = cache.get(cache_key)
+
+    if ai_insight is None:
+        if has_data:
+            # Now 'stats_summary' is defined and safe to use!
+            ai_insight = get_gemini_recommendations(stats_summary)
+        else:
+            ai_insight = (
+                "No emissions data has been recorded yet. "
+                "Log some activity data and return to this page for personalised "
+                "AI-powered sustainability recommendations."
+            )
+        
+        # Save the new result for 6 hours
+        cache.set(cache_key, ai_insight, timeout=21_600)
+
+    # ── 6. Render ─────────────────────────────────────────────────
+    return render(request, 'manager/insights.html', {
+        'dept':             dept,
+        'org_name':         org_name,
+        'monthly_data':     json.dumps(monthly_data),       # safe JSON for JS
+        'monthly_labels':   [m['label']  for m in monthly_data],
+        'monthly_totals':   [m['total']  for m in monthly_data],
+        'top_category':     top_category,
+        'top_category_val': top_category_val,
+        'category_totals':  category_totals_raw,
+        'current_m_total':  current_m_total,
+        'last_m_total':     round(last_m_total, 2),
+        'delta_kg':         delta_kg,
+        'delta_pct':        delta_pct,
+        'current_month':    now.strftime('%B %Y'),
+        'last_month_label': last_month.strftime('%B %Y'),
+        'ai_insight':       ai_insight,
+        'has_data':         any(item['total'] > 0 for item in monthly_data),
+    })

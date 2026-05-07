@@ -1,0 +1,842 @@
+﻿{% extends "manager/base_manager.html" %}
+
+{% block page_title %}Insights & Recommendations{% endblock %}
+{% block breadcrumb %}Insights{% endblock %}
+{% block nav_insights %}active{% endblock %}
+
+{% block extra_head %}
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+<style>
+        /* ═══════════════════════════════════════════════════════════
+       INSIGHTS PAGE  —  Strategic Report Style
+    ═══════════════════════════════════════════════════════════ */
+
+        /* Page header */
+        .insights-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.75rem;
+            flex-wrap: wrap;
+        }
+
+        .insights-header-left {
+        }
+
+        .page-eyebrow {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 0.35rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+            .page-eyebrow::before {
+                content: '';
+                width: 18px;
+                height: 1px;
+                background: var(--accent);
+                display: inline-block;
+            }
+
+        .page-title {
+            font-family: var(--font-mono);
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.03em;
+            line-height: 1.2;
+            margin: 0;
+        }
+
+        .page-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-2);
+            margin-top: 0.25rem;
+        }
+
+        /* Refresh cache button */
+        .btn-refresh-cache {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid var(--border-2);
+            border-radius: var(--radius);
+            color: var(--text-2);
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.18s, border-color 0.18s, background 0.18s;
+            white-space: nowrap;
+        }
+
+            .btn-refresh-cache:hover {
+                color: var(--accent);
+                border-color: rgba(57,255,20,0.35);
+                background: var(--accent-dim);
+            }
+
+            .btn-refresh-cache svg {
+                flex-shrink: 0;
+                transition: transform 0.5s var(--ease-spring);
+            }
+
+            .btn-refresh-cache:hover svg {
+                transform: rotate(180deg);
+            }
+
+        /* ── Cards ──────────────────────────────────────────────── */
+        .card-eco {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+            .card-eco:hover {
+                border-color: var(--border-2);
+            }
+
+        .card-eco-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.1rem 1.4rem 0.9rem;
+            border-bottom: 1px solid var(--border);
+            gap: 0.75rem;
+        }
+
+        .card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+
+        .card-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+            .card-icon.green {
+                background: var(--accent-dim);
+                color: var(--accent);
+            }
+
+            .card-icon.blue {
+                background: rgba(56, 189, 248, 0.10);
+                color: #38bdf8;
+            }
+
+            .card-icon.amber {
+                background: rgba(255, 170, 0, 0.10);
+                color: var(--warning);
+            }
+
+            .card-icon.violet {
+                background: rgba(167, 139, 250, 0.10);
+                color: #a78bfa;
+            }
+
+        .card-title {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+
+        .card-subtitle {
+            font-size: 0.72rem;
+            color: var(--text-2);
+            margin-top: 0.1rem;
+        }
+
+        .card-body {
+            padding: 1.25rem 1.4rem;
+        }
+
+        /* ── Chart card ─────────────────────────────────────────── */
+        .chart-wrapper {
+            position: relative;
+            height: 240px;
+        }
+
+        /* ── Stat cells (month comparison) ─────────────────────── */
+        .stat-grid {
+            display: grid;
+            gap: 0.85rem;
+        }
+
+        .stat-cell {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.9rem 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+            .stat-cell::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 2px;
+            }
+
+            .stat-cell.accent::before {
+                background: var(--accent);
+            }
+
+            .stat-cell.blue::before {
+                background: #38bdf8;
+            }
+
+            .stat-cell.amber::before {
+                background: var(--warning);
+            }
+
+            .stat-cell.danger::before {
+                background: var(--danger);
+            }
+
+        .stat-label {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-3);
+            margin-bottom: 0.35rem;
+        }
+
+        .stat-value {
+            font-family: var(--font-mono);
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1;
+        }
+
+            .stat-value .unit {
+                font-size: 0.7rem;
+                font-weight: 400;
+                color: var(--text-2);
+                margin-left: 0.25rem;
+            }
+
+        .stat-delta {
+            margin-top: 0.35rem;
+            font-size: 0.72rem;
+            color: var(--text-2);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+            .stat-delta .up {
+                color: var(--danger);
+            }
+
+            .stat-delta .down {
+                color: var(--accent);
+            }
+
+            .stat-delta .flat {
+                color: var(--text-2);
+            }
+
+        /* Category pill bar */
+        .cat-bar-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+            margin-top: 0.75rem;
+        }
+
+        .cat-bar-row {
+            display: grid;
+            grid-template-columns: 80px 1fr 56px;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .cat-bar-label {
+            font-size: 0.72rem;
+            color: var(--text-2);
+            white-space: nowrap;
+        }
+
+        .cat-bar-track {
+            height: 5px;
+            background: var(--surface-3);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .cat-bar-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: var(--accent);
+            transition: width 0.8s var(--ease-out);
+        }
+
+        .cat-bar-val {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            color: var(--text-2);
+            text-align: right;
+        }
+
+        /* ── AI Analysis card ───────────────────────────────────── */
+        .ai-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+            /* Subtle corner glow */
+            .ai-card::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                width: 200px;
+                height: 200px;
+                background: radial-gradient(ellipse at 100% 100%, rgba(167,139,250,0.06) 0%, transparent 65%);
+                pointer-events: none;
+            }
+
+        .ai-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.6rem;
+            background: rgba(167,139,250,0.12);
+            border: 1px solid rgba(167,139,250,0.2);
+            border-radius: 99px;
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: #a78bfa;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+            .ai-badge::before {
+                content: '';
+                width: 5px;
+                height: 5px;
+                background: #a78bfa;
+                border-radius: 50%;
+                animation: ai-pulse 2s ease-in-out infinite;
+            }
+
+        @keyframes ai-pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(0.75);
+            }
+        }
+
+        .ai-content {
+            font-size: 0.82rem;
+            color: var(--text-2);
+            line-height: 1.75;
+            position: relative;
+            z-index: 1;
+        }
+
+            .ai-content p {
+                margin-bottom: 0.85rem;
+            }
+
+                .ai-content p:last-child {
+                    margin-bottom: 0;
+                }
+
+            /* Bold headers inside AI text */
+            .ai-content strong {
+                color: var(--text);
+                font-family: var(--font-mono);
+                font-size: 0.72rem;
+                font-weight: 600;
+                letter-spacing: 0.05em;
+                display: block;
+                margin-bottom: 0.25rem;
+                margin-top: 0.85rem;
+            }
+
+                .ai-content strong:first-child {
+                    margin-top: 0;
+                }
+
+        /* Cache notice */
+        .cache-notice {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(255,255,255,0.02);
+            border-top: 1px solid var(--border);
+            font-size: 0.68rem;
+            color: var(--text-3);
+        }
+
+        /* ── Empty state ────────────────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+
+        .empty-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: var(--text-3);
+        }
+
+        .empty-title {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-2);
+            margin-bottom: 0.4rem;
+        }
+
+        .empty-body {
+            font-size: 0.78rem;
+            color: var(--text-3);
+            max-width: 320px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* ── Layout grid ────────────────────────────────────────── */
+        .insights-grid-bottom {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-top: 1.25rem;
+        }
+
+        @media (max-width: 860px) {
+            .insights-grid-bottom {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ── Animate in ─────────────────────────────────────────── */
+        .fade-up {
+            animation: fadeUp 0.45s var(--ease-out) both;
+        }
+
+            .fade-up:nth-child(2) {
+                animation-delay: 0.06s;
+            }
+
+            .fade-up:nth-child(3) {
+                animation-delay: 0.12s;
+            }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE HEADER
+═══════════════════════════════════════════════════════════ -->
+<div class="insights-header">
+    <div class="insights-header-left">
+        <div class="page-eyebrow">Strategic Report</div>
+        <h1 class="page-title">Insights & Recommendations</h1>
+        <p class="page-subtitle">
+            {{ dept.name }} &nbsp;·&nbsp; {{ current_month }}
+        </p>
+    </div>
+
+    <!-- Refresh AI cache (POST to same URL with ?refresh=1) -->
+    <form method="GET" action="{% url 'eco_insights' %}">
+        <input type="hidden" name="refresh" value="1">
+        <button type="submit" class="btn-refresh-cache">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M11 6.5A4.5 4.5 0 1 1 6.5 2c1.3 0 2.47.55 3.3 1.43"
+                      stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none" />
+                <path d="M9.5 1.5v2.5h2.5"
+                      stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
+            Refresh AI Analysis
+        </button>
+    </form>
+</div>
+
+
+{% if has_data %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     ROW 1 — Six-month Bar Chart
+═══════════════════════════════════════════════════════════ -->
+<div class="card-eco fade-up">
+    <div class="card-eco-header">
+        <div class="card-header-left">
+            <div class="card-icon green">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M1.5 13 L4.5 8 L7.5 10 L10.5 5 L14.5 8"
+                          stroke="currentColor" stroke-width="1.4"
+                          stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M1 13.5h14" stroke="currentColor" stroke-width="0.9" stroke-linecap="round" opacity=".3" />
+                </svg>
+            </div>
+            <div>
+                <div class="card-title">6-Month Emissions Trend</div>
+                <div class="card-subtitle">Total CO₂ output per month (kg) — all categories</div>
+            </div>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-3);">
+            kg CO₂
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="chart-wrapper">
+            <canvas id="emissionsBarChart"></canvas>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     ROW 2 — Two-column: Stats left, AI right
+═══════════════════════════════════════════════════════════ -->
+<div class="insights-grid-bottom">
+
+    <!-- LEFT — Monthly Summary ──────────────────────────── -->
+    <div class="card-eco fade-up">
+        <div class="card-eco-header">
+            <div class="card-header-left">
+                <div class="card-icon blue">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="2" width="5" height="5" rx="1" fill="currentColor" />
+                        <rect x="9" y="2" width="5" height="5" rx="1" fill="currentColor" opacity=".45" />
+                        <rect x="2" y="9" width="5" height="5" rx="1" fill="currentColor" opacity=".45" />
+                        <rect x="9" y="9" width="5" height="5" rx="1" fill="currentColor" opacity=".45" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="card-title">Monthly Summary</div>
+                    <div class="card-subtitle">{{ current_month }} vs {{ last_month_label }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+
+            <!-- Current month total -->
+            <div class="stat-cell accent" style="margin-bottom:0.85rem;">
+                <div class="stat-label">{{ current_month }}</div>
+                <div class="stat-value">
+                    {{ current_m_total }}<span class="unit">kg CO₂</span>
+                </div>
+                {% if delta_pct is not None %}
+                <div class="stat-delta">
+                    {% if delta_kg > 0 %}
+                    <span class="up">▲ {{ delta_kg }} kg ({{ delta_pct }}%)</span>
+                    <span>vs last month — higher</span>
+                    {% elif delta_kg < 0 %}
+                    <span class="down">▼ {{ delta_kg|stringformat:".2f"|slice:"1:" }} kg ({{ delta_pct|stringformat:".1f"|slice:"1:" }}%)</span>
+                    <span>vs last month — improved</span>
+                    {% else %}
+                    <span class="flat">No change</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Last month total -->
+            <div class="stat-cell blue" style="margin-bottom:1.1rem;">
+                <div class="stat-label">{{ last_month_label }}</div>
+                <div class="stat-value">
+                    {{ last_m_total }}<span class="unit">kg CO₂</span>
+                </div>
+            </div>
+
+            <!-- Top category -->
+            <div class="stat-cell amber" style="margin-bottom:1.1rem;">
+                <div class="stat-label">Top Category This Month</div>
+                <div class="stat-value" style="font-size:1rem;">
+                    {{ top_category }}<span class="unit">{{ top_category_val }} kg CO₂</span>
+                </div>
+            </div>
+
+            <!-- Category mini-bars -->
+            {% with max_val=top_category_val %}
+            <div class="cat-bar-list">
+                {% for cat, val in category_totals.items %}
+                <div class="cat-bar-row">
+                    <span class="cat-bar-label">{{ cat }}</span>
+                    <div class="cat-bar-track">
+                        <div class="cat-bar-fill"
+                             style="width:{% if max_val > 0 %}{% widthratio val max_val 100 %}%{% else %}0%{% endif %};">
+                        </div>
+                    </div>
+                    <span class="cat-bar-val">{{ val }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endwith %}
+
+        </div>
+    </div>
+
+
+    <!-- RIGHT — AI Analysis ─────────────────────────────── -->
+    <div class="card-eco ai-card fade-up">
+        <div class="card-eco-header">
+            <div class="card-header-left">
+                <div class="card-icon violet">
+                    <!-- Robot / AI icon -->
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="3" y="5" width="10" height="8" rx="2"
+                              stroke="currentColor" stroke-width="1.3" fill="none" />
+                        <circle cx="6" cy="9" r="1" fill="currentColor" />
+                        <circle cx="10" cy="9" r="1" fill="currentColor" />
+                        <path d="M6 12h4" stroke="currentColor" stroke-width="1.1"
+                              stroke-linecap="round" opacity=".6" />
+                        <path d="M8 5V3" stroke="currentColor" stroke-width="1.3"
+                              stroke-linecap="round" />
+                        <circle cx="8" cy="2.5" r="1" fill="currentColor" opacity=".5" />
+                        <path d="M1.5 8.5h1.5M13 8.5h1.5"
+                              stroke="currentColor" stroke-width="1.3"
+                              stroke-linecap="round" opacity=".4" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="card-title">AI Analysis</div>
+                    <div class="card-subtitle">Gemini-powered sustainability consultant</div>
+                </div>
+            </div>
+            <span class="ai-badge">Gemini Pro</span>
+        </div>
+
+        <div class="card-body">
+            <div class="ai-content">
+                {{ ai_insight|linebreaks }}
+            </div>
+        </div>
+
+        <div class="cache-notice">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.1" />
+                <path d="M5.5 3v2.5l1.5 1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+            </svg>
+            Analysis cached for 6 hours &nbsp;·&nbsp; Use "Refresh AI Analysis" to regenerate early
+        </div>
+    </div>
+
+</div>
+
+
+{% else %}
+<!-- ═══════════════════════════════════════════════════════════
+     EMPTY STATE — no data logged yet
+═══════════════════════════════════════════════════════════ -->
+<div class="card-eco fade-up">
+    <div class="card-body">
+        <div class="empty-state">
+            <div class="empty-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10
+                             10-4.48 10-10S17.52 2 12 2z"
+                          stroke="currentColor" stroke-width="1.3" fill="none" opacity=".4" />
+                    <path d="M12 8v4M12 16h.01"
+                          stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+            </div>
+            <div class="empty-title">No Emissions Data Available</div>
+            <p class="empty-body">
+                Start logging activity data for your department to unlock
+                AI-powered insights, trend charts, and personalised
+                sustainability recommendations.
+            </p>
+            <a href="{% url 'add_activity' %}"
+               style="display:inline-flex;align-items:center;gap:0.4rem;
+                      margin-top:1.25rem;padding:0.55rem 1.1rem;
+                      background:var(--accent-dim);border:1px solid rgba(57,255,20,0.25);
+                      border-radius:var(--radius);color:var(--accent);
+                      font-family:var(--font-mono);font-size:0.75rem;font-weight:600;
+                      text-decoration:none;transition:background 0.18s;">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" stroke-width="1.2" />
+                    <path d="M6.5 3.5v6M3.5 6.5h6"
+                          stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+                </svg>
+                Log First Activity
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+{% if has_data %}
+<script>
+(function () {
+    const labels = {{ monthly_labels|safe }};
+    const data   = {{ monthly_totals|safe }};
+
+    const ctx = document.getElementById('emissionsBarChart').getContext('2d');
+
+    /* Gradient fill for bars */
+    const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+    gradient.addColorStop(0,   'rgba(57,255,20,0.85)');
+    gradient.addColorStop(1,   'rgba(57,255,20,0.15)');
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Emissions (kg CO₂)',
+                data,
+                backgroundColor: data.map((_, i) =>
+                    i === data.length - 1
+                        ? gradient                          /* current month — full colour */
+                        : 'rgba(57,255,20,0.22)'           /* past months — muted */
+                ),
+                borderColor: data.map((_, i) =>
+                    i === data.length - 1
+                        ? 'rgba(57,255,20,0.9)'
+                        : 'rgba(57,255,20,0.35)'
+                ),
+                borderWidth: 1,
+                borderRadius: 4,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 900,
+                easing: 'easeOutQuart'
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1a1a1a',
+                    borderColor: 'rgba(255,255,255,0.08)',
+                    borderWidth: 1,
+                    titleColor: '#e8e8e8',
+                    bodyColor: '#808080',
+                    titleFont: { family: "'IBM Plex Mono', monospace", size: 11 },
+                    bodyFont:  { family: "'DM Sans', sans-serif",       size: 12 },
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => ` ${ctx.parsed.y.toLocaleString()} kg CO₂`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.04)' },
+                    ticks: {
+                        color: '#808080',
+                        font: { family: "'IBM Plex Mono', monospace", size: 10 }
+                    },
+                    border: { color: 'rgba(255,255,255,0.06)' }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.04)' },
+                    ticks: {
+                        color: '#808080',
+                        font: { family: "'IBM Plex Mono', monospace", size: 10 },
+                        callback: v => v.toLocaleString()
+                    },
+                    border: { color: 'rgba(255,255,255,0.06)' },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    /* Handle ?refresh=1 — clear cache via hidden POST then reload clean URL */
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('refresh') === '1') {
+        // The GET param is intercepted server-side if you add cache.delete()
+        // in the view; this script simply removes the param for a clean URL.
+        const clean = window.location.pathname;
+        window.history.replaceState({}, '', clean);
+    }
+}) ();
+    document.addEventListener("DOMContentLoaded", function () {
+        const aiContent = document.querySelector('.ai-content');
+        if (aiContent) {
+            // We use innerText first to handle the raw symbols better, 
+            // then convert to HTML
+            let text = aiContent.innerHTML;
+
+            // 1. Convert any header (#, ###, ####) into a clean styled DIV
+            // This regex now looks for any hashtags and removes them entirely
+            text = text.replace(/(?:#+)\s*(.*?)(?:<br>|$)/g, '<div style="color:var(--accent); font-weight:700; margin-top:1.2rem; margin-bottom:0.4rem; font-family:var(--font-mono); text-transform:uppercase; font-size:0.75rem; letter-spacing:0.05em;">$1</div>');
+
+            // 2. Convert bold markers **Text** -> <b>Text</b>
+            text = text.replace(/\*\*(.*?)\*\*/g, '<b style="color:var(--text); font-weight:600;">$1</b>');
+
+            // 3. Clean up list markers (asterisks at the start of a line)
+            text = text.replace(/^\s*\*\s+/gm, '• ');
+
+            // 4. THE CLEANER: Remove any remaining stray # or * symbols 
+            // that aren't part of the formatting
+            text = text.replace(/#+ /g, ''); // Removes "# " or "### "
+            text = text.replace(/<br>\s*#+/g, '<br>'); // Removes "#" after a break
+
+            aiContent.innerHTML = text;
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

@@ -30,4 +30,5 @@ urlpatterns = [
     # Look for this line or add it if it's missing
     path('delete-activity/<int:log_id>/', views.delete_activity, name='delete_activity'),
     path('manager/export/', views.export_csv, name='export_csv'),
+    path('manager/insights/', views.eco_insights, name='eco_insights'),
 ]

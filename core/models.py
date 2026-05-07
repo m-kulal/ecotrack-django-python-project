@@ -103,3 +103,4 @@ class ActivityLog(models.Model):
             f"{self.department.name} | {self.category} | "
             f"{self.quantity} units | {self.emissions_amount} kg CO₂ | {self.activity_date}"
         )
+    
