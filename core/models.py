@@ -175,4 +175,3 @@ def log_dashboard_event(organization, description: str) -> None:
     except Exception:
         pass   # logging must never crash the caller
     
-class
