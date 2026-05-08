@@ -103,8 +103,37 @@ def logout_view(request):
     return redirect('landing_page')
 
 
+# ═══════════════════════════════════════════════════════════════════
+#  PASTE THESE ADDITIONS INTO views.py
+#
+#  1. Replace the existing `dashboard` function entirely.
+#  2. Add the `department_detail` function below the existing views.
+#  3. Ensure `DashboardActivity` model is added to models.py (see
+#     models_addition.py).
+#  4. Add the new URL to urls.py (see urls_addition.py).
+# ═══════════════════════════════════════════════════════════════════
+
+# ── New top-level imports to ADD (merge with existing import block) ──
+# from django.core.cache import cache            ← already present
+# from .utils import get_gemini_recommendations  ← already present
+# import os                                      ← add this
+# from dateutil.relativedelta import relativedelta ← already present
+
+import os   # add to the import block at top of views.py
+
+
 # ─────────────────────────────────────────────────────────────────
-# 5. Admin Dashboard
+# 5. Admin Dashboard  ← REPLACE the existing dashboard() function
+#    with this version.
+#
+#    New additions vs the old stub:
+#      • total_emissions  — real sum from ActivityLog
+#      • emissions_change — month-on-month % delta with arrow prefix
+#      • limit_* fields   — computed against SustainabilityGoal
+#      • chart_labels / chart_co2 / chart_energy — 6-month JSON
+#        series for the Chart.js graph in dashboard.html
+#      • dept.emissions / dept.submitted — annotated onto each dept
+#      • recent_activities — last 5 DashboardActivity rows
 # ─────────────────────────────────────────────────────────────────
 @login_required
 def dashboard(request):
@@ -113,32 +142,324 @@ def dashboard(request):
         return redirect('manager_dashboard')
 
     admin_profile = getattr(request.user, 'userprofile', None)
+    org_name      = admin_profile.organization.name if admin_profile else "EcoTrack"
+    org           = admin_profile.organization       if admin_profile else None
 
-    # ── Branding: resolve organisation name for header/sidebar ────
-    # Passed as 'org_name' so base_admin.html and dashboard.html can
-    # both reference {{ org_name }} without extra template tags.
-    org_name = admin_profile.organization.name if admin_profile else "EcoTrack"
+    now = timezone.now()
 
-    # ── Departments for the "at a glance" table ───────────────────
-    departments = (
-        Department.objects.filter(organization=admin_profile.organization)
-        if admin_profile else Department.objects.none()
+    # ── Scoped queryset ───────────────────────────────────────────
+    if org:
+        org_logs = ActivityLog.objects.filter(department__organization=org)
+    else:
+        org_logs = ActivityLog.objects.none()
+
+    # ── Card 1: Total Emissions (all-time, tCO₂) ─────────────────
+    total_emissions_kg = (
+        org_logs.aggregate(t=Sum('emissions_amount'))['t'] or 0.0
+    )
+    total_emissions = round(total_emissions_kg / 1000, 2)   # kg → tCO₂
+
+    # ── Card 1b: Month-on-month % change ─────────────────────────
+    current_month_kg = (
+        org_logs
+        .filter(activity_date__year=now.year, activity_date__month=now.month)
+        .aggregate(t=Sum('emissions_amount'))['t'] or 0.0
+    )
+    last_month_dt = now - relativedelta(months=1)
+    last_month_kg = (
+        org_logs
+        .filter(
+            activity_date__year=last_month_dt.year,
+            activity_date__month=last_month_dt.month,
+        )
+        .aggregate(t=Sum('emissions_amount'))['t'] or 0.0
     )
 
+    if last_month_kg > 0:
+        delta_pct = round(((current_month_kg - last_month_kg) / last_month_kg) * 100, 1)
+        arrow     = '↓' if delta_pct <= 0 else '↑'
+        sign      = abs(delta_pct)
+        # Positive delta = more emissions = bad (shown in danger colour via template tag)
+        emissions_change     = f"{arrow} {sign}% from last month"
+        emissions_change_good = delta_pct <= 0   # True → accent green, False → danger red
+    else:
+        emissions_change      = "No prior month data"
+        emissions_change_good = True
+
+    # ── Card 2: Carbon Limit (from SustainabilityGoal) ────────────
+    # Use the most recent goal for this org as the monthly cap.
+    from .models import SustainabilityGoal   # local import to avoid circular
+    goal = (
+        SustainabilityGoal.objects
+        .filter(organization=org)
+        .order_by('-deadline')
+        .first()
+        if org else None
+    )
+
+    if goal and goal.target_value > 0:
+        limit_kg         = goal.target_value * 1000   # tCO₂ → kg
+        limit_pct_raw    = (current_month_kg / limit_kg) * 100
+        limit_percentage = min(round(limit_pct_raw, 1), 100)
+        limit_bar_width  = f"{limit_percentage}%"
+        limit_bar_color  = '#ff4444' if limit_pct_raw >= 90 else (
+                           '#ffaa00' if limit_pct_raw >= 70 else '#39ff14')
+        limit_text_color = ('var(--danger)' if limit_pct_raw >= 90 else
+                            '#ffaa00'       if limit_pct_raw >= 70 else 'var(--accent)')
+        show_limit_warning = limit_pct_raw >= 90
+        carbon_limit_label = f"{round(goal.target_value, 1)} tCO₂ / mo cap"
+    else:
+        limit_percentage   = 0
+        limit_bar_width    = '0%'
+        limit_bar_color    = '#39ff14'
+        limit_text_color   = 'var(--accent)'
+        show_limit_warning = False
+        carbon_limit_label = 'No goal set'
+
+    # ── Card 3: Active Departments ────────────────────────────────
+    dept_qs = (
+        Department.objects.filter(organization=org)
+        if org else Department.objects.none()
+    )
+    dept_count = dept_qs.count()
+
+    # ── Chart: 6-month CO₂ time-series ───────────────────────────
+    chart_labels = []
+    chart_co2    = []    # monthly total kg CO₂
+
+    for offset in range(5, -1, -1):
+        point = now - relativedelta(months=offset)
+        label = point.strftime('%b %Y')
+        total = (
+            org_logs
+            .filter(activity_date__year=point.year, activity_date__month=point.month)
+            .aggregate(t=Sum('emissions_amount'))['t'] or 0.0
+        )
+        chart_labels.append(label)
+        chart_co2.append(round(total, 2))
+
+    # ── Departments table: annotate emissions + submitted flag ────
+    # "submitted" = department has at least one log in the current month
+    current_month_dept_ids = set(
+        org_logs
+        .filter(activity_date__year=now.year, activity_date__month=now.month)
+        .values_list('department_id', flat=True)
+        .distinct()
+    )
+
+    dept_emissions = (
+        org_logs
+        .values('department_id')
+        .annotate(total=Sum('emissions_amount'))
+    )
+    dept_emissions_map = {
+        row['department_id']: round(row['total'] / 1000, 2)
+        for row in dept_emissions
+    }
+
+    departments_display = []
+    for dept in dept_qs.order_by('name'):
+        dept.emissions  = dept_emissions_map.get(dept.id)
+        dept.submitted  = dept.id in current_month_dept_ids
+        departments_display.append(dept)
+
+    # ── Activity Log: last 5 DashboardActivity rows ───────────────
+    from .models import DashboardActivity   # local import
+    recent_activities = DashboardActivity.objects.filter(
+        organization=org
+    ).order_by('-timestamp')[:5] if org else []
+
     return render(request, 'admin/dashboard.html', {
-        'admin_profile': admin_profile,
-        'org_name':      org_name,
-        'departments':   departments,
-        # Stat placeholders — replace with real aggregations later
-        'total_emissions':   0,
-        'limit_percentage':  0,
-        'limit_bar_width':   '0%',
-        'limit_bar_color':   '#39ff14',
-        'limit_text_color':  'var(--accent)',
-        'show_limit_warning': False,
-        'recent_activities': [],
+        'admin_profile':         admin_profile,
+        'org_name':              org_name,
+        'departments':           departments_display,
+
+        # Stat cards
+        'total_emissions':       total_emissions,
+        'emissions_change':      emissions_change,
+        'emissions_change_good': emissions_change_good,
+        'dept_count':            dept_count,
+
+        # Carbon limit card
+        'limit_percentage':      limit_percentage,
+        'limit_bar_width':       limit_bar_width,
+        'limit_bar_color':       limit_bar_color,
+        'limit_text_color':      limit_text_color,
+        'show_limit_warning':    show_limit_warning,
+        'carbon_limit_label':    carbon_limit_label,
+
+        # Chart.js data — use |safe in template
+        'chart_labels':          json.dumps(chart_labels),
+        'chart_co2':             json.dumps(chart_co2),
+
+        # Activity log
+        'recent_activities':     recent_activities,
     })
 
+
+# ─────────────────────────────────────────────────────────────────
+# NEW: Department Detail + Gemini AI Insight
+#      URL: /admin/department/<id>/insights/
+#      Access: admin only (UserProfile.role == ADMIN or is_superuser)
+#
+#      Template: admin/department_detail.html
+# ─────────────────────────────────────────────────────────────────
+@login_required
+def department_detail(request, dept_id):
+    """
+    Detailed analytics for a single department, plus a Gemini AI
+    sustainability recommendation.
+
+    Security:
+    - The view is restricted to org admins / superusers.
+    - The department must belong to the admin's own organisation.
+
+    Data pipeline:
+    1. Resolve admin's org; 404 if dept not in that org.
+    2. Compute 6-month rolling emissions totals (for the chart).
+    3. Compute current-month category breakdown.
+    4. Build a plain-text stats summary.
+    5. Fetch Gemini insight (cached 6 h per dept).
+    6. Render department_detail.html.
+    """
+
+    # ── Guard: admins only ────────────────────────────────────────
+    admin_profile = getattr(request.user, 'userprofile', None)
+    is_admin = (
+        request.user.is_superuser
+        or (admin_profile and admin_profile.role == 'ADMIN')
+    )
+    if not is_admin:
+        messages.error(request, "Admin access required.")
+        return redirect('dashboard')
+
+    # ── Resolve department — must belong to admin's org ───────────
+    org = admin_profile.organization if admin_profile else None
+    dept = get_object_or_404(Department, id=dept_id, organization=org)
+
+    org_name = org.name if org else "EcoTrack"
+    now      = timezone.now()
+
+    # ── Base queryset: only this department's logs ────────────────
+    dept_logs = ActivityLog.objects.filter(department=dept)
+
+    # ── 6-month rolling chart data ────────────────────────────────
+    chart_labels = []
+    chart_co2    = []
+    for offset in range(5, -1, -1):
+        point = now - relativedelta(months=offset)
+        total = (
+            dept_logs
+            .filter(activity_date__year=point.year, activity_date__month=point.month)
+            .aggregate(t=Sum('emissions_amount'))['t'] or 0.0
+        )
+        chart_labels.append(point.strftime('%b %Y'))
+        chart_co2.append(round(total, 2))
+
+    # ── Category breakdown (current month) ───────────────────────
+    categories = ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel']
+    current_logs = dept_logs.filter(
+        activity_date__year=now.year, activity_date__month=now.month
+    )
+    category_totals = {}
+    for cat in categories:
+        s = current_logs.filter(category=cat).aggregate(
+            t=Sum('emissions_amount')
+        )['t'] or 0.0
+        category_totals[cat] = round(s, 2)
+
+    top_category     = max(category_totals, key=category_totals.get)
+    top_category_val = category_totals[top_category]
+
+    # ── Month-on-month delta ──────────────────────────────────────
+    last_month_dt = now - relativedelta(months=1)
+    current_m_kg  = chart_co2[-1] if chart_co2 else 0.0
+    last_m_kg     = chart_co2[-2] if len(chart_co2) >= 2 else 0.0
+
+    if last_m_kg > 0:
+        delta_pct = round(((current_m_kg - last_m_kg) / last_m_kg) * 100, 1)
+        arrow     = '↓' if delta_pct <= 0 else '↑'
+        delta_str = f"{arrow} {abs(delta_pct)}% from {last_month_dt.strftime('%B')}"
+        delta_good = delta_pct <= 0
+    else:
+        delta_str  = "No prior month data"
+        delta_good = True
+
+    # ── All-time totals ───────────────────────────────────────────
+    all_time_kg = (
+        dept_logs.aggregate(t=Sum('emissions_amount'))['t'] or 0.0
+    )
+    all_time_tco2 = round(all_time_kg / 1000, 2)
+
+    # ── AI Insight — cached per-department for 6 hours ───────────
+    cache_key = f"dept_ai_insight_{dept.id}"
+
+    if request.GET.get('refresh') == '1':
+        cache.delete(cache_key)
+
+    ai_insight = cache.get(cache_key)
+
+    if ai_insight is None:
+        has_data = any(v > 0 for v in chart_co2)
+        if has_data:
+            stats_text = (
+                f"Organisation: {org_name}\n"
+                f"Department: {dept.name}\n"
+                f"Location: {dept.location or 'N/A'}\n"
+                f"Report month: {now.strftime('%B %Y')}\n\n"
+                f"Current month total: {current_m_kg} kg CO₂\n"
+                f"Previous month total: {last_m_kg} kg CO₂\n"
+                f"Month-on-month change: {delta_str}\n\n"
+                f"Top emitting category: {top_category} ({top_category_val} kg CO₂)\n\n"
+                f"Category breakdown (current month):\n"
+                + "\n".join(
+                    f"  • {cat}: {val} kg CO₂"
+                    for cat, val in category_totals.items()
+                )
+                + f"\n\nLast 6 months (oldest → newest):\n"
+                + "\n".join(
+                    f"  • {lbl}: {val} kg CO₂"
+                    for lbl, val in zip(chart_labels, chart_co2)
+                )
+            )
+            ai_insight = get_gemini_recommendations(stats_text)
+        else:
+            ai_insight = (
+                "No emissions data has been recorded for this department yet. "
+                "Ask the department manager to log activity data, then return "
+                "here for AI-powered sustainability recommendations."
+            )
+        cache.set(cache_key, ai_insight, timeout=21_600)
+
+    # ── Recent logs ───────────────────────────────────────────────
+    recent_logs = dept_logs.order_by('-activity_date', '-date_recorded')[:10]
+
+    return render(request, 'admin/department_detail.html', {
+        'admin_profile':    admin_profile,
+        'org_name':         org_name,
+        'dept':             dept,
+
+        # Chart
+        'chart_labels':     json.dumps(chart_labels),
+        'chart_co2':        json.dumps(chart_co2),
+
+        # Stat cards
+        'all_time_tco2':    all_time_tco2,
+        'current_m_kg':     round(current_m_kg, 2),
+        'delta_str':        delta_str,
+        'delta_good':       delta_good,
+        'top_category':     top_category,
+        'top_category_val': top_category_val,
+
+        # Category table
+        'category_totals':  category_totals,
+
+        # AI
+        'ai_insight':       ai_insight,
+
+        # Log table
+        'recent_logs':      recent_logs,
+    })
 
 # ─────────────────────────────────────────────────────────────────
 # 6. Branch (Manager) Dashboard — legacy redirect kept for safety

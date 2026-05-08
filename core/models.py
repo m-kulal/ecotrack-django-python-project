@@ -104,3 +104,73 @@ class ActivityLog(models.Model):
             f"{self.quantity} units | {self.emissions_amount} kg CO₂ | {self.activity_date}"
         )
     
+# ═══════════════════════════════════════════════════════════════════
+#  ADD THIS CLASS to models.py (below the existing ActivityLog model)
+#
+#  DashboardActivity is a lightweight event log written by your
+#  Django code whenever something notable happens (new department,
+#  goal updated, data submitted, etc.).  It replaces the hardcoded
+#  skeleton rows in the "Activity Log" card on the admin dashboard.
+#
+#  HOW TO WRITE AN EVENT from any view:
+#
+#      from .models import DashboardActivity
+#      DashboardActivity.objects.create(
+#          organization = org,
+#          description  = f"New department '{dept.name}' created.",
+#      )
+#
+#  The 5 most-recent rows are passed to the dashboard template as
+#  {{ recent_activities }}, where each object exposes:
+#      .description  — human-readable event text
+#      .timestamp    — DateTimeField (auto_now_add)
+# ═══════════════════════════════════════════════════════════════════
+
+class DashboardActivity(models.Model):
+    """
+    Lightweight event log for the Admin Dashboard "Activity Log" card.
+
+    Each row represents one notable system event scoped to an
+    Organisation.  The dashboard view fetches the 5 most recent
+    rows and passes them to the template as `recent_activities`.
+    """
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='dashboard_activities',
+    )
+    description = models.CharField(
+        max_length=300,
+        help_text="Human-readable event description shown in the dashboard."
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name        = 'Dashboard Activity'
+        verbose_name_plural = 'Dashboard Activities'
+
+    def __str__(self):
+        return f"[{self.timestamp:%Y-%m-%d %H:%M}] {self.description}"
+
+
+# ─────────────────────────────────────────────────────────────────
+#  HELPER — call this utility function from any view to record
+#  events without duplicating the import / create pattern everywhere.
+# ─────────────────────────────────────────────────────────────────
+def log_dashboard_event(organization, description: str) -> None:
+    """
+    Create a DashboardActivity row.  Silently swallows errors so
+    a logging failure never breaks the primary operation.
+
+    Usage:
+        from .models import log_dashboard_event
+        log_dashboard_event(org, f"Manager '{user.username}' submitted data.")
+    """
+    try:
+        DashboardActivity.objects.create(
+            organization=organization,
+            description=description[:300],
+        )
+    except Exception:
+        pass   # logging must never crash the caller
