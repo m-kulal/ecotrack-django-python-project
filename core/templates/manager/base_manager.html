@@ -680,7 +680,8 @@
     <aside class="sidebar" id="sidebar">
 
         <!-- Brand — links back to manager dashboard -->
-        <a href="{% url 'manager_dashboard' %}" class="sidebar-brand">
+        <a href="{% if user.is_superuser or user.userprofile.role == 'ADMIN' %}{% url 'dashboard' %}{% else %}{% url 'manager_dashboard' %}{% endif %}"
+           class="sidebar-brand">
             <div class="brand-mark">
                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                     <rect width="28" height="28" rx="6" fill="rgba(57,255,20,0.1)" />
@@ -699,6 +700,8 @@
 
             <div class="nav-section">Manager</div>
 
+            {% if not user.is_superuser %}
+            {# Dashboard and Log Activity links — hidden from admins visiting this layout #}
             <a href="{% url 'manager_dashboard' %}"
                class="nav-link-item {% block nav_dashboard %}{% endblock %}">
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
@@ -719,21 +722,35 @@
                 </svg>
                 Log Activity
             </a>
+            {% else %}
+            {# Admin sees a back-to-dashboard link instead #}
+            <a href="{% url 'dashboard' %}"
+               class="nav-link-item">
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                    <path d="M9.5 3L5.5 7.5 9.5 12"
+                          stroke="currentColor" stroke-width="1.4"
+                          stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Admin Dashboard
+            </a>
+            {% endif %}
 
             <div class="nav-section">Reports</div>
 
-            <a href="{% url 'manager_analytics' %}" class="nav-link-item {% block nav_analytics %}{% endblock %}">
+            <a href="{% if viewed_by_admin %}{% url 'manager_analytics' %}?dept_id={{ dept.id }}{% else %}{% url 'manager_analytics' %}{% endif %}"
+               class="nav-link-item {% block nav_analytics %}{% endblock %}">
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                     <path d="M1.5 12 L4.5 8 L7.5 10 L10.5 5 L13.5 7"
                           stroke="currentColor" stroke-width="1.3"
                           stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                    <path d="M1.5 12.5 h12" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".4" />
+                    <path d="M1.5 12.5 h12" stroke="currentColor" stroke-width="1"
+                          stroke-linecap="round" opacity=".4" />
                 </svg>
                 Analytics
             </a>
 
-            <!-- ▼▼▼ NEW: Insights & Recommendations link ▼▼▼ -->
-            <a href="{% url 'eco_insights' %}" class="nav-link-item {% block nav_insights %}{% endblock %}">
+            <a href="{% if viewed_by_admin %}{% url 'eco_insights' %}?dept_id={{ dept.id }}{% else %}{% url 'eco_insights' %}{% endif %}"
+               class="nav-link-item {% block nav_insights %}{% endblock %}">
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                     <path d="M7.5 1.5a4 4 0 0 1 2 7.46V10.5a.5.5 0 0 1-.5.5h-3
                              a.5.5 0 0 1-.5-.5V8.96A4 4 0 0 1 7.5 1.5z"

@@ -601,7 +601,7 @@
             {% for dept in departments %}
             <tr>
             <tr class="dept-tr"
-                onclick="window.location.href='{% url 'department_detail' dept.id %}';"
+                onclick="window.location.href='{% url 'manager_analytics' %}?dept_id={{ dept.id }}';"
                 title="Inspect {{ dept.name }} →">
                 <td class="dept-td dept-td-first">
                     <span style="font-family:var(--font-mono);font-size:0.68rem;color:var(--text-3);">
