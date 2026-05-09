@@ -1136,67 +1136,58 @@ from .utils import get_gemini_recommendations
 def eco_insights(request):
     """
     Insights & Recommendations page.
- 
-    • Normal path  → department manager views their own department.
-    • Admin path   → org admin / superuser passes ?dept_id=<id>.
- 
-    Context variable `viewed_by_admin` (bool) lets the template hide
-    manager-specific navigation elements for admin visitors.
- 
-    Cache key is per-department (not per-user) so admins see the same
-    cached insight that the manager would.
+
+    • Manager path  — resolves dept via managed_by=request.user
+    • Admin path    — resolves dept via ?dept_id= query param
     """
- 
-    # ── Detect admin bypass ────────────────────────────────────────
+
+    # ── 1. Resolve department (admin bypass or manager lookup) ────
     admin_profile   = getattr(request.user, 'userprofile', None)
     is_org_admin    = bool(admin_profile and admin_profile.role == 'ADMIN')
     viewed_by_admin = request.user.is_superuser or is_org_admin
- 
+
     if viewed_by_admin:
-        # Admin arrives here via ?dept_id=<id> from the dashboard table row.
         dept_id = request.GET.get('dept_id')
         if not dept_id:
             messages.error(request, "No department selected. Click a row in the dashboard.")
             return redirect('dashboard')
-        # Scope to admin's own org — prevents cross-org data leaks.
         org  = admin_profile.organization if admin_profile else None
         dept = get_object_or_404(Department, id=dept_id, organization=org)
     else:
-        # Normal manager path.
         dept = Department.objects.filter(managed_by=request.user).first()
         if not dept:
             return redirect('dashboard')
- 
+
     org_name = dept.organization.name if dept.organization else "EcoTrack"
     now      = timezone.now()
- 
-    # ── Six-month rolling window ───────────────────────────────────
+
+    # ── 2. Six-month rolling window ───────────────────────────────
     months = []
     for offset in range(5, -1, -1):
         point = now - relativedelta(months=offset)
         months.append((point.year, point.month, point.strftime('%b %Y')))
- 
+
     monthly_data = []
     for year, month, label in months:
         total = (
             ActivityLog.objects
             .filter(
-                department=dept,          # ← FIXED: specific dept only
+                department=dept,
                 activity_date__year=year,
                 activity_date__month=month,
             )
             .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
         )
         monthly_data.append({'label': label, 'total': round(total, 2)})
- 
-    # ── Top emitting category — current month ──────────────────────
+
+    # ── 3. Top emitting category — current month ──────────────────
     categories = ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel']
     current_month_logs = ActivityLog.objects.filter(
-        department=dept,                  # ← FIXED: specific dept only
+        department=dept,
         activity_date__year=now.year,
         activity_date__month=now.month,
     )
- 
+
     category_totals_raw = {}
     for cat in categories:
         cat_sum = (
@@ -1204,17 +1195,18 @@ def eco_insights(request):
             .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
         )
         category_totals_raw[cat] = round(cat_sum, 2)
- 
+
     top_category     = max(category_totals_raw, key=category_totals_raw.get)
     top_category_val = category_totals_raw[top_category]
- 
-    # ── Month-on-month delta ───────────────────────────────────────
+
+    # ── 4. Month-on-month delta ───────────────────────────────────
+    last_month   = now - relativedelta(months=1)
     last_m_total = (
         ActivityLog.objects
         .filter(
-            department=dept,              # ← FIXED: specific dept only
+            department=dept,
             activity_date__year=last_month.year,
-            activity_date__month=now.month,
+            activity_date__month=last_month.month,
         )
         .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
     )
@@ -1224,10 +1216,10 @@ def eco_insights(request):
         round((delta_kg / last_m_total) * 100, 1)
         if last_m_total > 0 else None
     )
- 
-    # ── AI insight — cache per-department for 6 hours ─────────────
+
+    # ── 5. Prepare AI summary ─────────────────────────────────────
     has_data = any(item['total'] > 0 for item in monthly_data)
- 
+
     if has_data:
         stats_summary = (
             f"Organisation: {org_name}\n"
@@ -1252,15 +1244,15 @@ def eco_insights(request):
         )
     else:
         stats_summary = "No data available."
- 
-    # Cache key is per-department so both admin and manager share the same result
+
+    # ── 6. Cache — keyed per department, not per user ─────────────
     cache_key = f"ai_insight_dept_{dept.id}"
- 
+
     if request.GET.get('refresh') == '1':
         cache.delete(cache_key)
- 
+
     ai_insight = cache.get(cache_key)
- 
+
     if ai_insight is None:
         if has_data:
             ai_insight = get_gemini_recommendations(stats_summary)
@@ -1271,20 +1263,14 @@ def eco_insights(request):
                 "AI-powered sustainability recommendations."
             )
         cache.set(cache_key, ai_insight, timeout=21_600)
- 
-    # ── Refresh URL — point back to the correct URL for each role ──
-    # Admins need dept_id in the refresh URL; managers do not.
-    if viewed_by_admin:
-        refresh_url = f"{request.path}?dept_id={dept.id}&refresh=1"
-    else:
-        refresh_url = f"{request.path}?refresh=1"
- 
+
+    # ── 7. Render ─────────────────────────────────────────────────
     return render(request, 'manager/insights.html', {
         'dept':             dept,
         'org_name':         org_name,
         'monthly_data':     json.dumps(monthly_data),
-        'monthly_labels':   [m['label']  for m in monthly_data],
-        'monthly_totals':   [m['total']  for m in monthly_data],
+        'monthly_labels':   [m['label'] for m in monthly_data],
+        'monthly_totals':   [m['total'] for m in monthly_data],
         'top_category':     top_category,
         'top_category_val': top_category_val,
         'category_totals':  category_totals_raw,
@@ -1295,8 +1281,7 @@ def eco_insights(request):
         'current_month':    now.strftime('%B %Y'),
         'last_month_label': last_month.strftime('%B %Y'),
         'ai_insight':       ai_insight,
-        'has_data':         any(item['total'] > 0 for item in monthly_data),
-        # ↓ NEW — needed by insights.html banner + refresh button
+        'has_data':         has_data,
         'viewed_by_admin':  viewed_by_admin,
         'refresh_url': (
             f"{request.path}?dept_id={dept.id}&refresh=1"
