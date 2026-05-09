@@ -1153,22 +1153,22 @@ def eco_insights(request):
     viewed_by_admin = request.user.is_superuser or is_org_admin
  
     if viewed_by_admin:
+        # Admin arrives here via ?dept_id=<id> from the dashboard table row.
         dept_id = request.GET.get('dept_id')
         if not dept_id:
-            messages.error(request, "No department specified. Click a row in the dashboard.")
+            messages.error(request, "No department selected. Click a row in the dashboard.")
             return redirect('dashboard')
- 
-        org = admin_profile.organization if admin_profile else None
+        # Scope to admin's own org — prevents cross-org data leaks.
+        org  = admin_profile.organization if admin_profile else None
         dept = get_object_or_404(Department, id=dept_id, organization=org)
-        org_name = org.name if org else "EcoTrack"
- 
     else:
+        # Normal manager path.
         dept = Department.objects.filter(managed_by=request.user).first()
         if not dept:
             return redirect('dashboard')
-        org_name = dept.organization.name if dept.organization else "EcoTrack"
  
-    now = timezone.now()
+    org_name = dept.organization.name if dept.organization else "EcoTrack"
+    now      = timezone.now()
  
     # ── Six-month rolling window ───────────────────────────────────
     months = []
@@ -1181,7 +1181,7 @@ def eco_insights(request):
         total = (
             ActivityLog.objects
             .filter(
-                department__organization=dept.organization,
+                department=dept,          # ← FIXED: specific dept only
                 activity_date__year=year,
                 activity_date__month=month,
             )
@@ -1192,7 +1192,7 @@ def eco_insights(request):
     # ── Top emitting category — current month ──────────────────────
     categories = ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel']
     current_month_logs = ActivityLog.objects.filter(
-        department__organization=dept.organization,
+        department=dept,                  # ← FIXED: specific dept only
         activity_date__year=now.year,
         activity_date__month=now.month,
     )
@@ -1209,13 +1209,12 @@ def eco_insights(request):
     top_category_val = category_totals_raw[top_category]
  
     # ── Month-on-month delta ───────────────────────────────────────
-    last_month   = now - relativedelta(months=1)
     last_m_total = (
         ActivityLog.objects
         .filter(
-            department__organization=dept.organization,
+            department=dept,              # ← FIXED: specific dept only
             activity_date__year=last_month.year,
-            activity_date__month=last_month.month,
+            activity_date__month=now.month,
         )
         .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
     )
@@ -1296,10 +1295,14 @@ def eco_insights(request):
         'current_month':    now.strftime('%B %Y'),
         'last_month_label': last_month.strftime('%B %Y'),
         'ai_insight':       ai_insight,
-        'has_data':         has_data,
-        # Template guards
+        'has_data':         any(item['total'] > 0 for item in monthly_data),
+        # ↓ NEW — needed by insights.html banner + refresh button
         'viewed_by_admin':  viewed_by_admin,
-        'refresh_url':      refresh_url,
+        'refresh_url': (
+            f"{request.path}?dept_id={dept.id}&refresh=1"
+            if viewed_by_admin
+            else f"{request.path}?refresh=1"
+        ),
     })
 # ─────────────────────────────────────────────────────────────────
 # admin_analytics  —  Global Analytics (Admin)
