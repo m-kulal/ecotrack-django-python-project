@@ -801,28 +801,51 @@ from django.db.models.functions import TruncMonth
 
 @login_required
 def manager_analytics(request):
-
-    # ── 1. Resolve the manager's department ──────────────────────────
-    # Mirrors the pattern used in manager_dashboard: look up by managed_by,
-    # never via UserProfile (managers may not have one).
-    dept = Department.objects.select_related('organization').filter(
-        managed_by=request.user
-    ).first()
-
-    if not dept:
-        # Not a manager — bounce to the admin area
-        return redirect('dashboard')
-
-    org_name = dept.organization.name
-
-    # ── 2. Scope the queryset to this single department ───────────────
-    # A manager owns exactly one department, so filtering by that dept
-    # is both correct and more efficient than a department__in lookup.
-    qs = ActivityLog.objects.filter(department=dept)
-
+    """
+    Analytics page.
+ 
+    • Normal path  → department manager views their own department.
+    • Admin path   → org admin / superuser passes ?dept_id=<id> to view
+                     any department within their organisation.
+ 
+    Context variable `viewed_by_admin` (bool) lets the template hide
+    manager-specific navigation elements for admin visitors.
+    """
+ 
+    # ── Detect admin bypass ────────────────────────────────────────
+    admin_profile  = getattr(request.user, 'userprofile', None)
+    is_org_admin   = bool(admin_profile and admin_profile.role == 'ADMIN')
+    viewed_by_admin = request.user.is_superuser or is_org_admin
+ 
+    if viewed_by_admin:
+        # Admin must supply ?dept_id=<id> in the URL; if missing, bounce
+        # to the admin dashboard with a helpful message.
+        dept_id = request.GET.get('dept_id')
+        if not dept_id:
+            messages.error(request, "No department specified. Click a row in the dashboard.")
+            return redirect('dashboard')
+ 
+        # Scope to admin's own organisation (security: no cross-org peek)
+        org = admin_profile.organization if admin_profile else None
+        dept = get_object_or_404(Department, id=dept_id, organization=org)
+        org_name = org.name if org else "EcoTrack"
+ 
+    else:
+        # Normal manager path — look up by managed_by
+        dept = Department.objects.select_related('organization').filter(
+            managed_by=request.user
+        ).first()
+ 
+        if not dept:
+            return redirect('dashboard')
+ 
+        org_name = dept.organization.name
+ 
+    # ── Scope the queryset to this single department ───────────────
+    qs       = ActivityLog.objects.filter(department=dept)
     has_data = qs.exists()
-
-    # ── 3. Dataset A: total emissions per category (Doughnut chart) ───
+ 
+    # ── Dataset A: total emissions per category (Doughnut) ─────────
     category_qs = (
         qs.values('category')
           .annotate(total=Sum('emissions_amount'))
@@ -830,11 +853,11 @@ def manager_analytics(request):
     )
     category_labels = [row['category']        for row in category_qs]
     category_values = [round(row['total'], 2) for row in category_qs]
-
-    # ── 4. Dataset B: monthly totals — last 6 months (Line chart) ─────
+ 
+    # ── Dataset B: monthly totals — last 6 months (Line) ───────────
     today   = date.today()
-    six_ago = today.replace(day=1) - relativedelta(months=5)  # start of month 6 months back
-
+    six_ago = today.replace(day=1) - relativedelta(months=5)
+ 
     monthly_qs = (
         qs.filter(activity_date__gte=six_ago)
           .annotate(month=TruncMonth('activity_date'))
@@ -842,10 +865,8 @@ def manager_analytics(request):
           .annotate(total=Sum('emissions_amount'))
           .order_by('month')
     )
-
-    # Build a complete 6-bucket scaffold — gaps become 0 so the line
-    # chart never has missing points.
-    month_map    = {
+ 
+    month_map = {
         row['month'].replace(day=1): round(row['total'], 2)
         for row in monthly_qs
     }
@@ -855,20 +876,22 @@ def manager_analytics(request):
         bucket = (six_ago + relativedelta(months=i)).replace(day=1)
         month_labels.append(bucket.strftime('%b %Y'))
         month_values.append(month_map.get(bucket, 0))
-
+ 
     context = {
-        'org_name':        org_name,
-        'dept':            dept,                   # lets the template show dept.name
-        'has_data':        has_data,
-        'total_emissions': round(
+        'org_name':         org_name,
+        'dept':             dept,
+        'has_data':         has_data,
+        'total_emissions':  round(
             qs.aggregate(t=Sum('emissions_amount'))['t'] or 0, 1
         ),
-        'category_count':  len(category_labels),
-        'entry_count':     qs.count(),
-        'category_labels': json.dumps(category_labels),
-        'category_data':   json.dumps(category_values),
-        'month_labels':    json.dumps(month_labels),
-        'month_data':      json.dumps(month_values),
+        'category_count':   len(category_labels),
+        'entry_count':      qs.count(),
+        'category_labels':  json.dumps(category_labels),
+        'category_data':    json.dumps(category_values),
+        'month_labels':     json.dumps(month_labels),
+        'month_data':       json.dumps(month_values),
+        # Template guard — hides manager-only nav links when True
+        'viewed_by_admin':  viewed_by_admin,
     }
     return render(request, 'manager/analytics.html', context)
 
@@ -1109,39 +1132,51 @@ def export_csv(request):
 from django.core.cache import cache
 from .utils import get_gemini_recommendations
 
-
 @login_required
 def eco_insights(request):
     """
-    Insights & Recommendations page for department managers.
-
-    Data pipeline:
-    1. Resolve the manager's Department → Organisation.
-    2. Compute monthly total emissions for the last 6 months (bar chart).
-    3. Identify the top emitting category for the current month.
-    4. Build a plain-text stats summary and fetch (or serve cached)
-       Gemini AI recommendations.
-    5. Render insights.html with all context variables.
+    Insights & Recommendations page.
+ 
+    • Normal path  → department manager views their own department.
+    • Admin path   → org admin / superuser passes ?dept_id=<id>.
+ 
+    Context variable `viewed_by_admin` (bool) lets the template hide
+    manager-specific navigation elements for admin visitors.
+ 
+    Cache key is per-department (not per-user) so admins see the same
+    cached insight that the manager would.
     """
-
-    # ── 1. Guard: must be a department manager ────────────────────
-    dept = Department.objects.filter(managed_by=request.user).first()
-    if not dept:
-        return redirect('dashboard')
-
-    org_name = dept.organization.name if dept.organization else "EcoTrack"
-    now      = timezone.now()
-
-    # ── 2. Six-month rolling window ───────────────────────────────
-    # Build a list of (year, month) tuples for the last 6 months,
-    # oldest first, so the chart renders left-to-right chronologically.
+ 
+    # ── Detect admin bypass ────────────────────────────────────────
+    admin_profile   = getattr(request.user, 'userprofile', None)
+    is_org_admin    = bool(admin_profile and admin_profile.role == 'ADMIN')
+    viewed_by_admin = request.user.is_superuser or is_org_admin
+ 
+    if viewed_by_admin:
+        dept_id = request.GET.get('dept_id')
+        if not dept_id:
+            messages.error(request, "No department specified. Click a row in the dashboard.")
+            return redirect('dashboard')
+ 
+        org = admin_profile.organization if admin_profile else None
+        dept = get_object_or_404(Department, id=dept_id, organization=org)
+        org_name = org.name if org else "EcoTrack"
+ 
+    else:
+        dept = Department.objects.filter(managed_by=request.user).first()
+        if not dept:
+            return redirect('dashboard')
+        org_name = dept.organization.name if dept.organization else "EcoTrack"
+ 
+    now = timezone.now()
+ 
+    # ── Six-month rolling window ───────────────────────────────────
     months = []
-    for offset in range(5, -1, -1):                       # 5 … 0
+    for offset in range(5, -1, -1):
         point = now - relativedelta(months=offset)
         months.append((point.year, point.month, point.strftime('%b %Y')))
-
-    monthly_data = []   # [{label, total}, …] — for JSON serialisation in template
-
+ 
+    monthly_data = []
     for year, month, label in months:
         total = (
             ActivityLog.objects
@@ -1153,15 +1188,15 @@ def eco_insights(request):
             .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
         )
         monthly_data.append({'label': label, 'total': round(total, 2)})
-
-    # ── 3. Top emitting category — current month ──────────────────
+ 
+    # ── Top emitting category — current month ──────────────────────
     categories = ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel']
     current_month_logs = ActivityLog.objects.filter(
         department__organization=dept.organization,
         activity_date__year=now.year,
         activity_date__month=now.month,
     )
-
+ 
     category_totals_raw = {}
     for cat in categories:
         cat_sum = (
@@ -1169,11 +1204,11 @@ def eco_insights(request):
             .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
         )
         category_totals_raw[cat] = round(cat_sum, 2)
-
+ 
     top_category     = max(category_totals_raw, key=category_totals_raw.get)
     top_category_val = category_totals_raw[top_category]
-
-    # ── 4. Month-on-month delta ───────────────────────────────────
+ 
+    # ── Month-on-month delta ───────────────────────────────────────
     last_month   = now - relativedelta(months=1)
     last_m_total = (
         ActivityLog.objects
@@ -1184,17 +1219,16 @@ def eco_insights(request):
         )
         .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
     )
-    current_m_total = monthly_data[-1]['total']   # already computed above
+    current_m_total = monthly_data[-1]['total']
     delta_kg        = round(current_m_total - last_m_total, 2)
     delta_pct       = (
         round((delta_kg / last_m_total) * 100, 1)
         if last_m_total > 0 else None
     )
-
-    # ── 5. AI insight — cache for 6 hours ─────────────────────────
-    # ── 5. Prepare data for AI (Move this ABOVE the cache check) ──
+ 
+    # ── AI insight — cache per-department for 6 hours ─────────────
     has_data = any(item['total'] > 0 for item in monthly_data)
-    
+ 
     if has_data:
         stats_summary = (
             f"Organisation: {org_name}\n"
@@ -1219,21 +1253,17 @@ def eco_insights(request):
         )
     else:
         stats_summary = "No data available."
-
-    # ── 6. Cache Logic ──
-    cache_key = f"ai_insight_{request.user.id}"
-
-    # Handle the manual refresh button
+ 
+    # Cache key is per-department so both admin and manager share the same result
+    cache_key = f"ai_insight_dept_{dept.id}"
+ 
     if request.GET.get('refresh') == '1':
         cache.delete(cache_key)
-        # Note: We don't redirect here anymore so the code below can 
-        # immediately generate the NEW insight for the user.
-
+ 
     ai_insight = cache.get(cache_key)
-
+ 
     if ai_insight is None:
         if has_data:
-            # Now 'stats_summary' is defined and safe to use!
             ai_insight = get_gemini_recommendations(stats_summary)
         else:
             ai_insight = (
@@ -1241,15 +1271,19 @@ def eco_insights(request):
                 "Log some activity data and return to this page for personalised "
                 "AI-powered sustainability recommendations."
             )
-        
-        # Save the new result for 6 hours
         cache.set(cache_key, ai_insight, timeout=21_600)
-
-    # ── 6. Render ─────────────────────────────────────────────────
+ 
+    # ── Refresh URL — point back to the correct URL for each role ──
+    # Admins need dept_id in the refresh URL; managers do not.
+    if viewed_by_admin:
+        refresh_url = f"{request.path}?dept_id={dept.id}&refresh=1"
+    else:
+        refresh_url = f"{request.path}?refresh=1"
+ 
     return render(request, 'manager/insights.html', {
         'dept':             dept,
         'org_name':         org_name,
-        'monthly_data':     json.dumps(monthly_data),       # safe JSON for JS
+        'monthly_data':     json.dumps(monthly_data),
         'monthly_labels':   [m['label']  for m in monthly_data],
         'monthly_totals':   [m['total']  for m in monthly_data],
         'top_category':     top_category,
@@ -1262,9 +1296,11 @@ def eco_insights(request):
         'current_month':    now.strftime('%B %Y'),
         'last_month_label': last_month.strftime('%B %Y'),
         'ai_insight':       ai_insight,
-        'has_data':         any(item['total'] > 0 for item in monthly_data),
+        'has_data':         has_data,
+        # Template guards
+        'viewed_by_admin':  viewed_by_admin,
+        'refresh_url':      refresh_url,
     })
-
 # ─────────────────────────────────────────────────────────────────
 # admin_analytics  —  Global Analytics (Admin)
 #
