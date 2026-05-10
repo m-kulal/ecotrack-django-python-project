@@ -1397,4 +1397,3 @@ def admin_analytics(request):
         # Empty-state flag — JS will check this before rendering
         'has_data':            total_logs > 0,
     })
-class demo
