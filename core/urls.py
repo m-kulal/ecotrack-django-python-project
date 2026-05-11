@@ -32,4 +32,5 @@ urlpatterns = [
     path('manager/export/', views.export_csv, name='export_csv'),
     path('manager/insights/', views.eco_insights, name='eco_insights'),
     path('admin/department/<int:dept_id>/insights/', views.department_detail, name='department_detail'),
+    path('dashboard/goals/', views.goal_tracking, name='goal_tracking'),
 ]

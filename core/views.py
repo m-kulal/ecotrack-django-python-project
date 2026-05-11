@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
-from .models import UserProfile, Organization, Department, ActivityLog
+from .models import UserProfile, Organization, Department, ActivityLog, CarbonGoal
 from .forms import UserRegistrationForm, OrganizationForm
 
 
