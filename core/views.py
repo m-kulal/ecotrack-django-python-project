@@ -1397,3 +1397,195 @@ def admin_analytics(request):
         # Empty-state flag — JS will check this before rendering
         'has_data':            total_logs > 0,
     })
+
+# ═══════════════════════════════════════════════════════════════════
+#  ADD to views.py
+#
+#  1. Add CarbonGoal to the models import line at the top:
+#       from .models import UserProfile, Organization, Department,
+#                           ActivityLog, DashboardActivity, CarbonGoal
+#
+#  2. Paste the two functions below anywhere after the dashboard() view.
+#
+#  3. Run:  python manage.py makemigrations && python manage.py migrate
+# ═══════════════════════════════════════════════════════════════════
+
+
+@login_required
+def goal_tracking(request):
+    """
+    Goal Tracking page — list all CarbonGoals for this organisation,
+    show live progress, and handle Create / Delete via POST.
+
+    Progress formula:
+        progress_pct = (actual_kg / target_kg) × 100
+
+    A result < 100 % = on track (green).
+    A result ≥ 100 % = over target (red).
+    """
+
+    # ── Guard ─────────────────────────────────────────────────────
+    if Department.objects.filter(managed_by=request.user).exists():
+        return redirect('manager_dashboard')
+
+    admin_profile = getattr(request.user, 'userprofile', None)
+    org           = admin_profile.organization if admin_profile else None
+    org_name      = org.name if org else "EcoTrack"
+
+    if not org:
+        messages.error(request, "No organisation linked to your account.")
+        return redirect('dashboard')
+
+    # ── Handle POST (create new goal) ────────────────────────────
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            title      = request.POST.get('title', '').strip()
+            target_kg  = request.POST.get('target_kg', '').strip()
+            start_date = request.POST.get('start_date', '').strip()
+            end_date   = request.POST.get('end_date', '').strip()
+            description = request.POST.get('description', '').strip()
+
+            # Basic validation
+            errors = []
+            if not title:
+                errors.append("Goal title is required.")
+            if not target_kg:
+                errors.append("Target (kg CO₂) is required.")
+            else:
+                try:
+                    target_kg = float(target_kg)
+                    if target_kg <= 0:
+                        errors.append("Target must be greater than zero.")
+                except ValueError:
+                    errors.append("Target must be a number.")
+            if not start_date:
+                errors.append("Start date is required.")
+            if not end_date:
+                errors.append("End date is required.")
+            if start_date and end_date and start_date >= end_date:
+                errors.append("End date must be after start date.")
+
+            if errors:
+                for e in errors:
+                    messages.error(request, e)
+            else:
+                CarbonGoal.objects.create(
+                    organization=org,
+                    title=title,
+                    description=description,
+                    target_kg=target_kg,
+                    start_date=start_date,
+                    end_date=end_date,
+                    status='ACTIVE',
+                )
+                # Log it
+                from .models import log_dashboard_event
+                log_dashboard_event(org, f"New carbon goal created: '{title}'")
+                messages.success(request, f"Goal '{title}' created successfully.")
+
+        elif action == 'delete':
+            goal_id = request.POST.get('goal_id')
+            goal    = get_object_or_404(CarbonGoal, id=goal_id, organization=org)
+            title   = goal.title
+            goal.delete()
+            from .models import log_dashboard_event
+            log_dashboard_event(org, f"Carbon goal deleted: '{title}'")
+            messages.success(request, f"Goal '{title}' deleted.")
+
+        elif action == 'update_status':
+            goal_id    = request.POST.get('goal_id')
+            new_status = request.POST.get('status')
+            if new_status in ('ACTIVE', 'ACHIEVED', 'FAILED', 'UPCOMING'):
+                goal = get_object_or_404(CarbonGoal, id=goal_id, organization=org)
+                goal.status = new_status
+                goal.save()
+                messages.success(request, f"Goal status updated to {new_status}.")
+
+        return redirect('goal_tracking')
+
+    # ── Fetch all goals for this org ──────────────────────────────
+    goals_qs = CarbonGoal.objects.filter(organization=org).order_by('-start_date')
+
+    # ── Annotate each goal with live progress ─────────────────────
+    today  = date.today()
+    goals  = []
+
+    for goal in goals_qs:
+        # Sum all ActivityLog emissions within the goal's date window
+        actual_kg = (
+            ActivityLog.objects
+            .filter(
+                department__organization=org,
+                activity_date__gte=goal.start_date,
+                activity_date__lte=goal.end_date,
+            )
+            .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
+        )
+        actual_kg = round(actual_kg, 2)
+
+        # Progress percentage — capped at 200 % for the bar width
+        if goal.target_kg > 0:
+            raw_pct      = (actual_kg / goal.target_kg) * 100
+            progress_pct = round(raw_pct, 1)
+            bar_width    = min(raw_pct, 100)   # bar never overflows past 100 %
+        else:
+            raw_pct = progress_pct = bar_width = 0.0
+
+        # Remaining / overage
+        remaining_kg = round(goal.target_kg - actual_kg, 2)
+
+        # Colour coding
+        if progress_pct >= 100:
+            bar_color   = 'var(--danger)'
+            status_color = 'var(--danger)'
+        elif progress_pct >= 80:
+            bar_color   = 'var(--warning)'
+            status_color = 'var(--warning)'
+        else:
+            bar_color   = 'var(--accent)'
+            status_color = 'var(--accent)'
+
+        # Days left / overdue
+        if today <= goal.end_date:
+            days_left = (goal.end_date - today).days
+            is_overdue = False
+        else:
+            days_left  = 0
+            is_overdue = True
+
+        # Auto-update status if past end date and still ACTIVE
+        if is_overdue and goal.status == 'ACTIVE':
+            goal.status = 'FAILED' if progress_pct >= 100 else 'ACHIEVED'
+            goal.save()
+
+        goals.append({
+            'obj':          goal,
+            'actual_kg':    actual_kg,
+            'progress_pct': progress_pct,
+            'bar_width':    round(bar_width, 1),
+            'bar_color':    bar_color,
+            'status_color': status_color,
+            'remaining_kg': remaining_kg,
+            'days_left':    days_left,
+            'is_overdue':   is_overdue,
+            'on_track':     progress_pct < 80,
+        })
+
+    # ── Summary counts for the header cards ───────────────────────
+    total_goals    = len(goals)
+    active_goals   = sum(1 for g in goals if g['obj'].status == 'ACTIVE')
+    achieved_goals = sum(1 for g in goals if g['obj'].status == 'ACHIEVED')
+    failed_goals   = sum(1 for g in goals if g['obj'].status == 'FAILED')
+
+    return render(request, 'admin/goal_tracking.html', {
+        'admin_profile': admin_profile,
+        'org_name':      org_name,
+        'goals':         goals,
+        'total_goals':   total_goals,
+        'active_goals':  active_goals,
+        'achieved_goals': achieved_goals,
+        'failed_goals':  failed_goals,
+        'today':         today,
+    })
