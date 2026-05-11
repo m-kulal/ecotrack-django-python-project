@@ -1,0 +1,984 @@
+﻿{% extends 'admin/base_admin.html' %}
+
+{% block page_title %}Goal Tracking{% endblock %}
+{% block breadcrumb %}Goal Tracking{% endblock %}
+{% block nav_goals %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ── Page layout ── */
+    .goals-page {
+        max-width: 1060px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.75rem;
+        flex-wrap: wrap;
+    }
+
+    .page-eyebrow {
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 0.3rem;
+    }
+
+    .page-title {
+        font-family: var(--font-mono);
+        font-size: 1.45rem;
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: -0.03em;
+        line-height: 1.2;
+    }
+
+    .page-subtitle {
+        font-size: 0.78rem;
+        color: var(--text-2);
+        margin-top: 0.2rem;
+    }
+
+    /* ── Summary cards row ── */
+    .summary-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.85rem;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 760px) {
+        .summary-row {
+            grid-template-columns: repeat(2,1fr);
+        }
+    }
+
+    .s-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 1rem 1.1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .s-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .s-card.green::before {
+            background: var(--accent);
+        }
+
+        .s-card.amber::before {
+            background: var(--warning);
+        }
+
+        .s-card.red::before {
+            background: var(--danger);
+        }
+
+        .s-card.blue::before {
+            background: #38bdf8;
+        }
+
+    .s-card-label {
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        margin-bottom: 0.4rem;
+    }
+
+    .s-card-value {
+        font-family: var(--font-mono);
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1;
+    }
+
+    .s-card.green .s-card-value {
+        color: var(--accent);
+    }
+
+    .s-card.amber .s-card-value {
+        color: var(--warning);
+    }
+
+    .s-card.red .s-card-value {
+        color: var(--danger);
+    }
+
+    .s-card.blue .s-card-value {
+        color: #38bdf8;
+    }
+
+    /* ── Create goal button ── */
+    .btn-create {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.55rem 1.1rem;
+        background: var(--accent-dim);
+        border: 1px solid rgba(57,255,20,0.3);
+        border-radius: var(--radius);
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--accent);
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.18s, border-color 0.18s;
+        white-space: nowrap;
+    }
+
+        .btn-create:hover {
+            background: rgba(57,255,20,0.18);
+            border-color: rgba(57,255,20,0.5);
+            color: var(--accent);
+        }
+
+    /* ── Goal card ── */
+    .goal-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        margin-bottom: 1rem;
+        overflow: hidden;
+        transition: border-color 0.2s;
+        position: relative;
+    }
+
+        .goal-card:hover {
+            border-color: var(--border-2);
+        }
+
+    .goal-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 1.25rem 1.4rem 1rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .goal-title {
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 0.2rem;
+    }
+
+    .goal-meta {
+        font-size: 0.72rem;
+        color: var(--text-2);
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+    }
+
+    .goal-meta-sep {
+        color: var(--text-3);
+    }
+
+    /* Status badge */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 99px;
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+        .status-badge.active {
+            background: rgba(57,255,20,0.1);
+            border: 1px solid rgba(57,255,20,0.2);
+            color: var(--accent);
+        }
+
+        .status-badge.achieved {
+            background: rgba(56,189,248,0.1);
+            border: 1px solid rgba(56,189,248,0.2);
+            color: #38bdf8;
+        }
+
+        .status-badge.failed {
+            background: rgba(255,68,68,0.1);
+            border: 1px solid rgba(255,68,68,0.2);
+            color: var(--danger);
+        }
+
+        .status-badge.upcoming {
+            background: rgba(255,170,0,0.1);
+            border: 1px solid rgba(255,170,0,0.2);
+            color: var(--warning);
+        }
+
+    .status-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    /* Progress bar section */
+    .goal-progress-section {
+        padding: 0 1.4rem 1.25rem;
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-label {
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        color: var(--text-3);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+
+    .progress-pct {
+        font-family: var(--font-mono);
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+
+    .progress-track {
+        height: 8px;
+        background: var(--surface-3);
+        border-radius: 99px;
+        overflow: hidden;
+        margin-bottom: 0.75rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 99px;
+        transition: width 1s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    /* Stats row inside card */
+    .goal-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.6rem;
+        border-top: 1px solid var(--border);
+        padding: 0.9rem 1.4rem;
+        background: var(--surface-2);
+    }
+
+    @media (max-width: 520px) {
+        .goal-stats {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .gstat-label {
+        font-family: var(--font-mono);
+        font-size: 0.58rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        margin-bottom: 0.2rem;
+    }
+
+    .gstat-value {
+        font-family: var(--font-mono);
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .gstat-unit {
+        font-size: 0.62rem;
+        color: var(--text-2);
+        font-weight: 400;
+        margin-left: 0.15rem;
+    }
+
+    /* Actions footer */
+    .goal-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.65rem 1.4rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .btn-sm {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.28rem 0.7rem;
+        border-radius: 5px;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.15s;
+        background: transparent;
+    }
+
+        .btn-sm.danger {
+            color: var(--danger);
+            border-color: rgba(255,68,68,0.2);
+        }
+
+            .btn-sm.danger:hover {
+                background: rgba(255,68,68,0.08);
+                border-color: rgba(255,68,68,0.4);
+            }
+
+        .btn-sm.muted {
+            color: var(--text-2);
+            border-color: var(--border-2);
+        }
+
+            .btn-sm.muted:hover {
+                color: var(--text);
+                border-color: var(--border-2);
+                background: var(--surface-2);
+            }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+    .modal-box {
+        background: var(--surface);
+        border: 1px solid var(--border-2);
+        border-radius: var(--radius-lg);
+        width: 100%;
+        max-width: 520px;
+        position: relative;
+        overflow: hidden;
+        animation: modalIn 0.22s var(--ease-spring) both;
+    }
+
+    @keyframes modalIn {
+        from {
+            opacity: 0;
+            transform: scale(0.94) translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .modal-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--accent), transparent 55%);
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem 1.4rem 1rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+        font-family: var(--font-mono);
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .modal-close {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: 1px solid var(--border-2);
+        border-radius: 6px;
+        color: var(--text-2);
+        cursor: pointer;
+        transition: color 0.15s, border-color 0.15s;
+    }
+
+        .modal-close:hover {
+            color: var(--text);
+            border-color: var(--border-2);
+        }
+
+    .modal-body {
+        padding: 1.25rem 1.4rem;
+    }
+
+    /* Form fields */
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-label {
+        display: block;
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-2);
+        margin-bottom: 0.4rem;
+    }
+
+    .form-input {
+        width: 100%;
+        background: var(--surface-2);
+        border: 1px solid var(--border-2);
+        border-radius: var(--radius);
+        padding: 0.6rem 0.85rem;
+        font-family: var(--font-body);
+        font-size: 0.82rem;
+        color: var(--text);
+        outline: none;
+        transition: border-color 0.18s;
+    }
+
+        .form-input:focus {
+            border-color: rgba(57,255,20,0.45);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-3);
+        }
+
+    textarea.form-input {
+        resize: vertical;
+        min-height: 70px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+
+    @media (max-width: 460px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        padding: 1rem 1.4rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .btn-cancel {
+        padding: 0.5rem 1rem;
+        background: transparent;
+        border: 1px solid var(--border-2);
+        border-radius: var(--radius);
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--text-2);
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+        .btn-cancel:hover {
+            color: var(--text);
+            border-color: var(--border-2);
+            background: var(--surface-2);
+        }
+
+    .btn-submit {
+        padding: 0.5rem 1.1rem;
+        background: var(--accent-dim);
+        border: 1px solid rgba(57,255,20,0.35);
+        border-radius: var(--radius);
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--accent);
+        cursor: pointer;
+        transition: all 0.18s;
+    }
+
+        .btn-submit:hover {
+            background: rgba(57,255,20,0.18);
+            border-color: rgba(57,255,20,0.5);
+        }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--surface);
+        border: 1px dashed var(--border-2);
+        border-radius: var(--radius-lg);
+    }
+
+    .empty-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--accent-dim);
+        border: 1px solid rgba(57,255,20,0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        color: var(--accent);
+    }
+
+    .empty-title {
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 0.4rem;
+    }
+
+    .empty-body {
+        font-size: 0.78rem;
+        color: var(--text-2);
+        max-width: 320px;
+        margin: 0 auto 1.5rem;
+        line-height: 1.6;
+    }
+
+    /* Overdue warning stripe */
+    .overdue-stripe {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 1.4rem;
+        background: rgba(255,68,68,0.05);
+        border-bottom: 1px solid rgba(255,68,68,0.12);
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        color: var(--danger);
+    }
+
+    /* Fade-up animation */
+    .fade-up {
+        animation: fadeUp 0.4s var(--ease-out) both;
+    }
+
+        .fade-up:nth-child(2) {
+            animation-delay: 0.05s;
+        }
+
+        .fade-up:nth-child(3) {
+            animation-delay: 0.10s;
+        }
+
+        .fade-up:nth-child(4) {
+            animation-delay: 0.15s;
+        }
+
+        .fade-up:nth-child(5) {
+            animation-delay: 0.20s;
+        }
+
+    @keyframes fadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0)
+        }
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="goals-page">
+
+    {# ── Page header ── #}
+    <div class="page-header fade-up">
+        <div>
+            <div class="page-eyebrow">{{ org_name }}</div>
+            <h1 class="page-title">Goal Tracking</h1>
+            <p class="page-subtitle">Set and monitor organisation-level CO₂ reduction targets</p>
+        </div>
+        <button class="btn-create" onclick="openModal()">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <circle cx="6" cy="6" r="5.2" stroke="currentColor" stroke-width="1.3" />
+                <path d="M6 3.5v5M3.5 6h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            </svg>
+            New Goal
+        </button>
+    </div>
+
+    {# ── Summary cards ── #}
+    <div class="summary-row fade-up">
+        <div class="s-card blue">
+            <div class="s-card-label">Total Goals</div>
+            <div class="s-card-value">{{ total_goals }}</div>
+        </div>
+        <div class="s-card green">
+            <div class="s-card-label">Active</div>
+            <div class="s-card-value">{{ active_goals }}</div>
+        </div>
+        <div class="s-card amber">
+            <div class="s-card-label">Achieved</div>
+            <div class="s-card-value">{{ achieved_goals }}</div>
+        </div>
+        <div class="s-card red">
+            <div class="s-card-label">Failed</div>
+            <div class="s-card-value">{{ failed_goals }}</div>
+        </div>
+    </div>
+
+
+    {# ── Goal cards ── #}
+    {% if goals %}
+
+    {% for g in goals %}
+    <div class="goal-card fade-up">
+
+        {# Overdue warning banner #}
+        {% if g.is_overdue and g.obj.status == 'ACTIVE' %}
+        <div class="overdue-stripe">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                <path d="M5.5 1L10 9.5H1L5.5 1z" stroke="currentColor" stroke-width="1.1" fill="none" />
+                <path d="M5.5 4.5v2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+                <circle cx="5.5" cy="8" r="0.5" fill="currentColor" />
+            </svg>
+            Goal period has ended — final result locked in
+        </div>
+        {% endif %}
+
+        {# Header row #}
+        <div class="goal-card-header">
+            <div>
+                <div class="goal-title">{{ g.obj.title }}</div>
+                <div class="goal-meta">
+                    <span>{{ g.obj.start_date|date:"d M Y" }}</span>
+                    <span class="goal-meta-sep">→</span>
+                    <span>{{ g.obj.end_date|date:"d M Y" }}</span>
+                    {% if g.obj.description %}
+                    <span class="goal-meta-sep">·</span>
+                    <span>{{ g.obj.description|truncatechars:60 }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+                {# Status badge #}
+                {% if g.obj.status == 'ACTIVE' %}
+                <span class="status-badge active"><span class="status-dot"></span>Active</span>
+                {% elif g.obj.status == 'ACHIEVED' %}
+                <span class="status-badge achieved"><span class="status-dot"></span>Achieved</span>
+                {% elif g.obj.status == 'FAILED' %}
+                <span class="status-badge failed"><span class="status-dot"></span>Failed</span>
+                {% else %}
+                <span class="status-badge upcoming"><span class="status-dot"></span>Upcoming</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Progress bar #}
+        <div class="goal-progress-section">
+            <div class="progress-header">
+                <span class="progress-label">Progress — Emissions used vs target</span>
+                <span class="progress-pct" style="color:{{ g.bar_color }};">
+                    {{ g.progress_pct }}%
+                    {% if g.progress_pct >= 100 %}
+                    <span style="font-size:0.62rem;font-weight:400;color:var(--danger);"> OVER LIMIT</span>
+                    {% elif g.progress_pct >= 80 %}
+                    <span style="font-size:0.62rem;font-weight:400;color:var(--warning);"> NEAR LIMIT</span>
+                    {% else %}
+                    <span style="font-size:0.62rem;font-weight:400;color:var(--accent);"> ON TRACK</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill"
+                     data-width="{{ g.bar_width }}"
+                     style="width:0%;
+                                background:{{ g.bar_color }};
+                                box-shadow:0 0 8px {{ g.bar_color }}55;">
+                </div>
+            </div>
+        </div>
+
+        {# Stats row #}
+        <div class="goal-stats">
+            <div>
+                <div class="gstat-label">Actual Emissions</div>
+                <div class="gstat-value">
+                    {{ g.actual_kg|floatformat:1 }}
+                    <span class="gstat-unit">kg CO₂</span>
+                </div>
+            </div>
+            <div>
+                <div class="gstat-label">Target Limit</div>
+                <div class="gstat-value">
+                    {{ g.obj.target_kg|floatformat:1 }}
+                    <span class="gstat-unit">kg CO₂</span>
+                </div>
+            </div>
+            <div>
+                <div class="gstat-label">
+                    {% if g.remaining_kg >= 0 %}Remaining{% else %}Overage{% endif %}
+                </div>
+                <div class="gstat-value"
+                     style="color:{% if g.remaining_kg < 0 %}var(--danger){% elif g.remaining_kg < g.obj.target_kg|floatformat:0|add:'0'|floatformat:0 %}var(--warning){% else %}var(--accent){% endif %};">
+                    {% if g.remaining_kg >= 0 %}
+                    {{ g.remaining_kg|floatformat:1 }}
+                    {% else %}
+                    +{{ g.remaining_kg|floatformat:1|slice:"1:" }}
+                    {% endif %}
+                    <span class="gstat-unit">kg CO₂</span>
+                </div>
+            </div>
+        </div>
+
+        {# Actions footer #}
+        <div class="goal-actions">
+            {% if not g.is_overdue %}
+            <span style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-3);">
+                {{ g.days_left }} day{{ g.days_left|pluralize }} remaining
+            </span>
+            {% else %}
+            <span style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-3);">
+                Ended {{ g.obj.end_date|date:"d M Y" }}
+            </span>
+            {% endif %}
+
+            <div style="margin-left:auto;display:flex;gap:0.5rem;align-items:center;">
+                {# Quick status toggle form #}
+                <form method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_status" />
+                    <input type="hidden" name="goal_id" value="{{ g.obj.id }}" />
+                    <select name="status"
+                            onchange="this.form.submit()"
+                            class="btn-sm muted"
+                            style="cursor:pointer;padding:0.28rem 0.5rem;">
+                        <option value="ACTIVE" {% if g.obj.status= ='ACTIVE' %}selected{% endif %}>Active</option>
+                        <option value="ACHIEVED" {% if g.obj.status= ='ACHIEVED' %}selected{% endif %}>Achieved</option>
+                        <option value="FAILED" {% if g.obj.status= ='FAILED' %}selected{% endif %}>Failed</option>
+                        <option value="UPCOMING" {% if g.obj.status= ='UPCOMING' %}selected{% endif %}>Upcoming</option>
+                    </select>
+                </form>
+
+                {# Delete button #}
+                <form method="post" onsubmit="return confirm('Delete this goal? This cannot be undone.');">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete" />
+                    <input type="hidden" name="goal_id" value="{{ g.obj.id }}" />
+                    <button type="submit" class="btn-sm danger">
+                        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                            <path d="M1.5 3h8M4 3V1.5h3V3M4.5 5v3.5M6.5 5v3.5M2 3l.5 6.5a.5.5 0 00.5.5h5a.5.5 0 00.5-.5L9 3"
+                                  stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+                        </svg>
+                        Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+    {% endfor %}
+
+    {% else %}
+
+    {# Empty state #}
+    <div class="empty-state fade-up">
+        <div class="empty-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4" fill="none" />
+                <path d="M12 7v5.5l3.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+        </div>
+        <div class="empty-title">No goals set yet</div>
+        <p class="empty-body">
+            Create your first carbon goal to start tracking your organisation's
+            emissions against a defined target.
+        </p>
+        <button class="btn-create" onclick="openModal()">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <circle cx="6" cy="6" r="5.2" stroke="currentColor" stroke-width="1.3" />
+                <path d="M6 3.5v5M3.5 6h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            </svg>
+            Create First Goal
+        </button>
+    </div>
+
+    {% endif %}
+
+</div>{# /.goals-page #}
+
+
+{# ══════════════════════════════════════════════════════════════════
+   CREATE GOAL MODAL
+══════════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay" id="createModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title">New Carbon Goal</span>
+            <button class="modal-close" onclick="closeModal()" type="button">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+            </button>
+        </div>
+
+        <form method="post" id="createGoalForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create" />
+
+            <div class="modal-body">
+
+                <div class="form-group">
+                    <label class="form-label" for="id_title">Goal Title *</label>
+                    <input class="form-input" type="text" id="id_title" name="title"
+                           placeholder="e.g. Q3 2025 Emission Reduction" required maxlength="200" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="id_target_kg">Target Limit (kg CO₂) *</label>
+                    <input class="form-input" type="number" id="id_target_kg" name="target_kg"
+                           placeholder="e.g. 5000" step="0.01" min="0.01" required />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="id_start_date">Start Date *</label>
+                        <input class="form-input" type="date" id="id_start_date" name="start_date" required />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="id_end_date">End Date *</label>
+                        <input class="form-input" type="date" id="id_end_date" name="end_date" required />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="id_description">Notes (optional)</label>
+                    <textarea class="form-input" id="id_description" name="description"
+                              placeholder="Additional context or methodology notes…"></textarea>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn-submit">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="margin-right:0.3rem;">
+                        <circle cx="6" cy="6" r="5.2" stroke="currentColor" stroke-width="1.3" />
+                        <path d="M6 3.5v5M3.5 6h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+                    </svg>
+                    Create Goal
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+    /* ── Modal ── */
+    function openModal() {
+        document.getElementById('createModal').classList.add('open');
+        document.body.style.overflow = 'hidden';
+        document.getElementById('id_title').focus();
+    }
+    function closeModal() {
+        document.getElementById('createModal').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    document.getElementById('createModal').addEventListener('click', function (e) {
+        if (e.target === this) closeModal();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+    });
+
+    /* ── Animate progress bars on load ── */
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.progress-fill').forEach(function (bar) {
+            var target = bar.getAttribute('data-width') + '%';
+            bar.style.width = '0%';
+            setTimeout(function () { bar.style.width = target; }, 200);
+        });
+
+        /* Pre-fill today's date as start_date default */
+        var today = new Date().toISOString().split('T')[0];
+        var startInput = document.getElementById('id_start_date');
+        if (startInput && !startInput.value) startInput.value = today;
+
+        /* Date validation: end must be after start */
+        document.getElementById('id_end_date').addEventListener('change', function () {
+            var start = document.getElementById('id_start_date').value;
+            if (start && this.value && this.value <= start) {
+                this.setCustomValidity('End date must be after start date.');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    });
+
+    {% if messages %}
+    /* Auto-open modal if there was a validation error (so user doesn't lose context) */
+    {% for message in messages %}
+    {% if message.tags == 'error' %}
+    window.addEventListener('load', openModal);
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+</script>
+{% endblock %}
