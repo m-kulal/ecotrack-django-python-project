@@ -806,10 +806,10 @@
                             onchange="this.form.submit()"
                             class="btn-sm muted"
                             style="cursor:pointer;padding:0.28rem 0.5rem;">
-                        <option value="ACTIVE" {% if g.obj.status= ='ACTIVE' %}selected{% endif %}>Active</option>
-                        <option value="ACHIEVED" {% if g.obj.status= ='ACHIEVED' %}selected{% endif %}>Achieved</option>
-                        <option value="FAILED" {% if g.obj.status= ='FAILED' %}selected{% endif %}>Failed</option>
-                        <option value="UPCOMING" {% if g.obj.status= ='UPCOMING' %}selected{% endif %}>Upcoming</option>
+                        <option value="ACTIVE" {% if g.obj.status == 'ACTIVE' %}selected{% endif %}>Active</option>
+                        <option value="ACHIEVED" {% if g.obj.status == 'ACHIEVED' %}selected{% endif %}>Achieved</option>
+                        <option value="FAILED" {% if g.obj.status == 'FAILED' %}selected{% endif %}>Failed</option>
+                        <option value="UPCOMING" {% if g.obj.status == 'UPCOMING' %}selected{% endif %}>Upcoming</option>
                     </select>
                 </form>
 
@@ -861,9 +861,7 @@
 </div>{# /.goals-page #}
 
 
-{# ══════════════════════════════════════════════════════════════════
-   CREATE GOAL MODAL
-══════════════════════════════════════════════════════════════════ #}
+
 <div class="modal-overlay" id="createModal">
     <div class="modal-box">
         <div class="modal-header">
