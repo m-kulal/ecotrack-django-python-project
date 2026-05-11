@@ -175,3 +175,63 @@ def log_dashboard_event(organization, description: str) -> None:
     except Exception:
         pass   # logging must never crash the caller
     
+# ═══════════════════════════════════════════════════════════════════
+#  ADD THIS CLASS to models.py — paste it after DashboardActivity
+# ═══════════════════════════════════════════════════════════════════
+
+class CarbonGoal(models.Model):
+    """
+    An organisation-level emission reduction target.
+
+    The admin sets a `target_kg` (kg CO₂) over a date range.
+    The view calculates progress as:
+        progress_pct = (total_actual_kg / target_kg) × 100
+
+    A value below 100 % is good (under target).
+    A value above 100 % means the organisation has exceeded the cap.
+    """
+
+    STATUS_CHOICES = [
+        ('ACTIVE',    'Active'),
+        ('ACHIEVED',  'Achieved'),
+        ('FAILED',    'Failed'),
+        ('UPCOMING',  'Upcoming'),
+    ]
+
+    organization = models.ForeignKey(
+        'Organization',
+        on_delete=models.CASCADE,
+        related_name='carbon_goals',
+    )
+    title = models.CharField(
+        max_length=200,
+        help_text="Short goal name shown in the dashboard (e.g. 'Q3 2025 Reduction Target').",
+    )
+    description = models.TextField(
+        blank=True, null=True,
+        help_text="Optional longer description / notes.",
+    )
+    target_kg = models.FloatField(
+        help_text="Maximum allowable CO₂ in kg for the entire goal period.",
+    )
+    start_date = models.DateField(
+        help_text="First day of the measurement window.",
+    )
+    end_date = models.DateField(
+        help_text="Last day of the measurement window.",
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='ACTIVE',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-start_date']
+        verbose_name        = 'Carbon Goal'
+        verbose_name_plural = 'Carbon Goals'
+
+    def __str__(self):
+        return f"{self.organization.name} — {self.title} ({self.start_date} → {self.end_date})"
