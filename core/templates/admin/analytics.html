@@ -338,35 +338,6 @@
     {% endif %}
 </div>
 
-{# ── System Intelligence: Strategic Report ─────────────────────── #}
-<div class="intel-card">
-    <div class="intel-card-header">
-        <div class="intel-card-title">
-            {# Terminal / circuit icon — no AI/Gemini branding #}
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="1" y="1" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.2" />
-                <path d="M4 5l2 2-2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M8 9h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-            </svg>
-            System Intelligence: Strategic Report
-        </div>
-        <a href="{{ refresh_url }}" class="intel-refresh-btn" title="Regenerate report">
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9.5 2A5 5 0 1 0 10 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M10 2H7.5V4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            Refresh
-        </a>
-    </div>
-    <div class="intel-card-divider"></div>
-    <div class="intel-card-body">
-        {% if strategic_report %}
-        <div class="intel-report-text">{{ strategic_report|linebreaksbr }}</div>
-        {% else %}
-        <div class="intel-empty">No report available. Click Refresh to generate a strategic analysis.</div>
-        {% endif %}
-    </div>
-</div>
 
 {# ── Stat row ──────────────────────────────────────────────────── #}
 <div class="stat-row">
@@ -443,6 +414,36 @@
         </div>
     </div>
 
+</div>
+
+{# ── System Intelligence: Strategic Report ─────────────────────── #}
+<div class="intel-card">
+    <div class="intel-card-header">
+        <div class="intel-card-title">
+            {# Terminal / circuit icon — no AI/Gemini branding #}
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.2" />
+                <path d="M4 5l2 2-2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M8 9h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            </svg>
+            System Intelligence: Strategic Report
+        </div>
+        <a href="{{ refresh_url }}" class="intel-refresh-btn" title="Regenerate report">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9.5 2A5 5 0 1 0 10 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M10 2H7.5V4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Refresh
+        </a>
+    </div>
+    <div class="intel-card-divider"></div>
+    <div class="intel-card-body">
+        {% if strategic_report %}
+        <div class="intel-report-text">{{ strategic_report|linebreaksbr }}</div>
+        {% else %}
+        <div class="intel-empty">No report available. Click Refresh to generate a strategic analysis.</div>
+        {% endif %}
+    </div>
 </div>
 
 {% else %}
