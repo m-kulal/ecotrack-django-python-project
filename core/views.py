@@ -1305,18 +1305,19 @@ def admin_analytics(request):
       1. dept_labels / dept_data   → League table (bar chart)
       2. cat_labels  / cat_data    → Category breakdown (doughnut)
       3. trend_labels / trend_data → 6-month org-wide trend (line)
+      4. strategic_report          → Gemini Sustainability Consultant text
+                                     (cached 6 h per org; ?refresh=1 busts it)
     """
 
     # ── Guard: must be an Admin ───────────────────────────────────
-    # Redirect plain managers to their own dashboard.
     if Department.objects.filter(managed_by=request.user).exists():
         return redirect('manager_dashboard')
 
     admin_profile = getattr(request.user, 'userprofile', None)
-    org = admin_profile.organization if admin_profile else None
+    org      = admin_profile.organization if admin_profile else None
     org_name = org.name if org else "EcoTrack"
 
-    # Base queryset — all logs that belong to this organisation
+    # ── Base queryset ─────────────────────────────────────────────
     if org:
         org_logs = ActivityLog.objects.filter(department__organization=org)
     else:
@@ -1330,7 +1331,7 @@ def admin_analytics(request):
         .order_by('-total')
     )
     dept_labels = [row['department__name'] for row in dept_qs]
-    dept_data   = [round(row['total'], 2) for row in dept_qs]
+    dept_data   = [round(row['total'], 2)   for row in dept_qs]
 
     # ── Dataset 2: Category Breakdown ────────────────────────────
     CATEGORIES = ['Electricity', 'Water', 'Petrol', 'Diesel', 'Travel']
@@ -1340,19 +1341,17 @@ def admin_analytics(request):
         .annotate(total=Sum('emissions_amount'))
         .order_by('category')
     )
-    # Build ordered lists matching CATEGORIES (fill 0 if category absent)
-    cat_map = {row['category']: round(row['total'], 2) for row in cat_qs}
+    cat_map    = {row['category']: round(row['total'], 2) for row in cat_qs}
     cat_labels = CATEGORIES
     cat_data   = [cat_map.get(cat, 0.0) for cat in CATEGORIES]
 
     # ── Dataset 3: 6-Month Org-wide Trend ────────────────────────
-    now = timezone.now()
+    now          = timezone.now()
     trend_labels = []
     trend_data   = []
 
-    for offset in range(5, -1, -1):           # oldest → newest
+    for offset in range(5, -1, -1):
         point = now - relativedelta(months=offset)
-        label = point.strftime('%b %Y')
         total = (
             org_logs
             .filter(
@@ -1361,19 +1360,107 @@ def admin_analytics(request):
             )
             .aggregate(total=Sum('emissions_amount'))['total'] or 0.0
         )
-        trend_labels.append(label)
+        trend_labels.append(point.strftime('%b %Y'))
         trend_data.append(round(total, 2))
 
-    # ── Summary stats for the stat-row cards ─────────────────────
+    # ── Summary stat cards ────────────────────────────────────────
     total_org_emissions = round(
         org_logs.aggregate(total=Sum('emissions_amount'))['total'] or 0.0, 2
     )
     total_departments = Department.objects.filter(organization=org).count() if org else 0
     total_logs        = org_logs.count()
+    top_dept          = dept_labels[0] if dept_labels else "—"
+    top_dept_val      = dept_data[0]   if dept_data   else 0.0
 
-    # Top emitting department (for the highlight card)
-    top_dept = dept_labels[0] if dept_labels else "—"
-    top_dept_val = dept_data[0] if dept_data else 0.0
+    has_data = total_logs > 0
+
+    # ── Strategic Report — Gemini Sustainability Consultant ───────
+    # Cached per-organisation for 6 hours.
+    # Force-refresh with ?refresh=1 in the URL.
+    strategic_report = None
+
+    if has_data:
+        cache_key = f"strategic_report_org_{org.id}" if org else None
+
+        if cache_key:
+            if request.GET.get('refresh') == '1':
+                cache.delete(cache_key)
+
+            strategic_report = cache.get(cache_key)
+
+        if strategic_report is None:
+            # ── Build the prompt payload ──────────────────────────
+            # Month-on-month delta for the trend narrative
+            current_month_kg = trend_data[-1]
+            prev_month_kg    = trend_data[-2] if len(trend_data) >= 2 else 0.0
+
+            if prev_month_kg > 0:
+                delta_pct  = round(((current_month_kg - prev_month_kg) / prev_month_kg) * 100, 1)
+                trend_dir  = f"{'increased' if delta_pct > 0 else 'decreased'} by {abs(delta_pct)}%"
+            else:
+                trend_dir  = "no prior month comparison available"
+
+            # Top category across all time
+            top_cat_name  = max(cat_map, key=cat_map.get) if cat_map else "N/A"
+            top_cat_val   = cat_map.get(top_cat_name, 0.0)
+
+            stats_text = (
+                f"You are a senior Sustainability Consultant writing a strategic "
+                f"performance report for a corporate client. Be specific, data-driven, "
+                f"and actionable. Do NOT use generic filler text.\n\n"
+
+                f"=== ORGANISATION PROFILE ===\n"
+                f"Name: {org_name}\n"
+                f"Industry: {org.industry or 'N/A'}\n"
+                f"Country: {org.country or 'N/A'}\n"
+                f"Report generated: {now.strftime('%B %Y')}\n\n"
+
+                f"=== EMISSIONS OVERVIEW ===\n"
+                f"Total all-time emissions: {total_org_emissions} kg CO₂\n"
+                f"Active departments tracked: {total_departments}\n"
+                f"Total log entries: {total_logs}\n\n"
+
+                f"=== TOP EMITTER (your primary focus) ===\n"
+                f"Highest-emitting department: {top_dept} ({top_dept_val} kg CO₂ all time)\n"
+                f"Full department league table (high → low):\n"
+                + "\n".join(
+                    f"  {i+1}. {lbl}: {val} kg CO₂"
+                    for i, (lbl, val) in enumerate(zip(dept_labels, dept_data))
+                )
+                + f"\n\n=== 6-MONTH TREND (your secondary focus) ===\n"
+                f"Month-on-month change ({trend_labels[-2]} → {trend_labels[-1]}): {trend_dir}\n"
+                "Monthly breakdown (oldest → newest):\n"
+                + "\n".join(
+                    f"  {lbl}: {val} kg CO₂"
+                    for lbl, val in zip(trend_labels, trend_data)
+                )
+                + f"\n\n=== CATEGORY BREAKDOWN (all time) ===\n"
+                f"Top emitting category: {top_cat_name} ({top_cat_val} kg CO₂)\n"
+                + "\n".join(
+                    f"  • {cat}: {cat_map.get(cat, 0.0)} kg CO₂"
+                    for cat in CATEGORIES
+                )
+                + "\n\n=== YOUR TASK ===\n"
+                "Write a strategic sustainability report with exactly these three sections:\n"
+                "1. EXECUTIVE SUMMARY — 2-3 sentences summarising the organisation's "
+                "overall emissions position and the single most important finding.\n"
+                "2. KEY INSIGHTS — 3 bullet points. Each bullet must cite a specific "
+                "number from the data above. Focus on the top emitter department and "
+                "the 6-month trend direction.\n"
+                "3. RECOMMENDED ACTIONS — 3 concrete, department-specific actions the "
+                "organisation should take in the next 30 days to reduce emissions. "
+                "Name the specific department(s) involved.\n"
+                "Use plain text only. No markdown headers with #. No asterisks. "
+                "Separate sections with a blank line."
+            )
+
+            strategic_report = get_gemini_recommendations(stats_text)
+
+            if cache_key:
+                cache.set(cache_key, strategic_report, timeout=21_600)   # 6 hours
+
+    # Refresh URL — strips ?refresh=1 from the browser bar after processing
+    refresh_url = f"{request.path}?refresh=1"
 
     return render(request, 'admin/analytics.html', {
         'admin_profile':       admin_profile,
@@ -1387,15 +1474,19 @@ def admin_analytics(request):
         'trend_labels':        json.dumps(trend_labels),
         'trend_data':          json.dumps(trend_data),
 
-        # Summary cards
+        # Summary stat cards
         'total_org_emissions': total_org_emissions,
         'total_departments':   total_departments,
         'total_logs':          total_logs,
         'top_dept':            top_dept,
         'top_dept_val':        top_dept_val,
 
-        # Empty-state flag — JS will check this before rendering
-        'has_data':            total_logs > 0,
+        # Empty-state flag
+        'has_data':            has_data,
+
+        # Strategic report
+        'strategic_report':    strategic_report,
+        'refresh_url':         refresh_url,
     })
 
 # ═══════════════════════════════════════════════════════════════════
