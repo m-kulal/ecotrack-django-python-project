@@ -599,7 +599,6 @@
         </thead>
         <tbody>
             {% for dept in departments %}
-            <tr>
             <tr class="dept-tr"
                 onclick="window.location.href='{% url 'manager_analytics' %}?dept_id={{ dept.id }}';"
                 title="Inspect {{ dept.name }} →">
