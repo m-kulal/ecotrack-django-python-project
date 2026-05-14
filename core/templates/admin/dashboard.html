@@ -489,12 +489,12 @@
                 </div>
             </div>
 
-            {# Chart.js canvas #}
+            {# Chart.js canvas — parent needs explicit height when maintainAspectRatio:false #}
             <div style="background:var(--surface-2);border:1px solid var(--border);
                   border-radius:var(--radius);padding:1.25rem 1rem 0.75rem;
-                  overflow:hidden;position:relative;">
-                <canvas id="emissionsChart" height="180"
-                        style="display:block;max-height:180px;"></canvas>
+                  overflow:hidden;position:relative;height:180px;">
+                <canvas id="emissionsChart"
+                        style="display:block;width:100%;height:100%;"></canvas>
             </div>
 
         </div>
@@ -721,15 +721,19 @@
     }
 
     /* ── Chart.js — Emissions Trend ── */
-    // Django view passes JSON arrays; |safe prevents HTML-escaping.
+    // Django view passes JSON arrays via |safe; declare them outside
+    // DOMContentLoaded so setPeriod() can also reference them.
     var allLabels = {{ chart_labels|safe }};
     var allCo2    = {{ chart_co2|safe }};
+    var emissionsChart;   // declared here so setPeriod() can access it
 
-    var ctx = document.getElementById('emissionsChart');
-    var emissionsChart;
+    // Defer chart creation until the DOM is fully painted so Chart.js
+    // can measure the canvas/parent dimensions correctly.
+    document.addEventListener('DOMContentLoaded', function () {
+        var canvas = document.getElementById('emissionsChart');
+        if (!canvas) { return; }
 
-    if (ctx) {
-        emissionsChart = new Chart(ctx, {
+        emissionsChart = new Chart(canvas, {
             type: 'line',
             data: {
                 labels: allLabels,
@@ -737,10 +741,13 @@
                     label: 'CO₂ Emissions (kg)',
                     data: allCo2,
                     borderColor: '#39ff14',
+                    // Gradient: built once the chart context exists
                     backgroundColor: function(context) {
-                        var chart = context.chart;
-                        var ctx2  = chart.ctx;
-                        var grad  = ctx2.createLinearGradient(0, 0, 0, 180);
+                        var chartArea = context.chart.chartArea;
+                        if (!chartArea) { return 'rgba(57,255,20,0.15)'; }
+                        var grad = context.chart.ctx.createLinearGradient(
+                            0, chartArea.top, 0, chartArea.bottom
+                        );
                         grad.addColorStop(0,   'rgba(57,255,20,0.25)');
                         grad.addColorStop(1,   'rgba(57,255,20,0)');
                         return grad;
@@ -799,6 +806,6 @@
                 }
             }
         });
-    }
+    });
 </script>
 {% endblock %}

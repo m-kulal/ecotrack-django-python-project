@@ -186,19 +186,19 @@ def dashboard(request):
         emissions_change      = "No prior month data"
         emissions_change_good = True
 
-    # ── Card 2: Carbon Limit (from SustainabilityGoal) ────────────
-    # Use the most recent goal for this org as the monthly cap.
-    from .models import SustainabilityGoal   # local import to avoid circular
-    goal = (
-        SustainabilityGoal.objects
-        .filter(organization=org)
-        .order_by('-deadline')
+    # ── Card 2: Carbon Limit (from CarbonGoal) ───────────────────
+    # Use the most recent ACTIVE CarbonGoal for this org as the cap.
+    # CarbonGoal (not SustainabilityGoal) is what goal_tracking creates.
+    active_goal = (
+        CarbonGoal.objects
+        .filter(organization=org, status='ACTIVE')
+        .order_by('-start_date')
         .first()
         if org else None
     )
 
-    if goal and goal.target_value > 0:
-        limit_kg         = goal.target_value * 1000   # tCO₂ → kg
+    if active_goal and active_goal.target_kg > 0:
+        limit_kg         = active_goal.target_kg          # already in kg
         limit_pct_raw    = (current_month_kg / limit_kg) * 100
         limit_percentage = min(round(limit_pct_raw, 1), 100)
         limit_bar_width  = f"{limit_percentage}%"
@@ -207,7 +207,8 @@ def dashboard(request):
         limit_text_color = ('var(--danger)' if limit_pct_raw >= 90 else
                             '#ffaa00'       if limit_pct_raw >= 70 else 'var(--accent)')
         show_limit_warning = limit_pct_raw >= 90
-        carbon_limit_label = f"{round(goal.target_value, 1)} tCO₂ / mo cap"
+        limit_t = round(active_goal.target_kg / 1000, 1)
+        carbon_limit_label = f"{limit_t} tCO₂ goal · {active_goal.title}"
     else:
         limit_percentage   = 0
         limit_bar_width    = '0%'
