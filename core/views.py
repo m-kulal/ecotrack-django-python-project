@@ -1456,39 +1456,6 @@ def admin_analytics(request):
 
             strategic_report = get_gemini_recommendations(stats_text)
 
-            if cache_key:
-                cache.set(cache_key, strategic_report, timeout=21_600)   # 6 hours
-
-    # Refresh URL — strips ?refresh=1 from the browser bar after processing
-    refresh_url = f"{request.path}?refresh=1"
-
-    return render(request, 'admin/analytics.html', {
-        'admin_profile':       admin_profile,
-        'org_name':            org_name,
-
-        # Chart data — safe JSON strings
-        'dept_labels':         json.dumps(dept_labels),
-        'dept_data':           json.dumps(dept_data),
-        'cat_labels':          json.dumps(cat_labels),
-        'cat_data':            json.dumps(cat_data),
-        'trend_labels':        json.dumps(trend_labels),
-        'trend_data':          json.dumps(trend_data),
-
-        # Summary stat cards
-        'total_org_emissions': total_org_emissions,
-        'total_departments':   total_departments,
-        'total_logs':          total_logs,
-        'top_dept':            top_dept,
-        'top_dept_val':        top_dept_val,
-
-        # Empty-state flag
-        'has_data':            has_data,
-
-        # Strategic report
-        'strategic_report':    strategic_report,
-        'refresh_url':         refresh_url,
-    })
-
 # ═══════════════════════════════════════════════════════════════════
 #  ADD to views.py
 #
