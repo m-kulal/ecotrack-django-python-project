@@ -489,6 +489,7 @@
                 </div>
             </div>
 
+            
             <div style="background:var(--surface-2);border:1px solid var(--border);
                   border-radius:var(--radius);padding:1rem 1rem 0.75rem;
                   overflow:hidden;">
@@ -675,119 +676,70 @@
 
 
 {% block extra_scripts %}
-{# Chart.js CDN #}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
-        integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3oD+sCoJrzXJ+yKywrkrLiku/gdkE7iNQ+G/cGAE5ARHOGioJFUmXA=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
 <script>
-    /* ── Live clock ── */
-    (function tick() {
-        var el = document.getElementById('liveClock');
-        if (el) {
-            var now = new Date();
-            el.textContent =
-                now.toLocaleTimeString('en-GB', { hour12: false }) +
-                ' · ' +
-                now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-        }
-        setTimeout(tick, 1000);
-    })();
+    /* ═══════════════════════════════════════════════════════════════
+       ALL DASHBOARD JAVASCRIPT — single script tag, no SRI, no race.
 
-    /* ── Animate progress bar on load ── */
-    function initLimitBar() {
-        var bar = document.getElementById('limitBar');
-        if (bar) {
-            var target = bar.getAttribute('data-target') || '0%';
-            bar.style.width = '0%';
-            setTimeout(function () { bar.style.width = target; }, 150);
-        }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initLimitBar);
-    } else {
-        initLimitBar();
-    }
+       Execution order:
+         1. Chart data baked in by Django (allLabels / allCo2).
+         2. Chart.js loaded dynamically via loadScript().
+         3. loadScript.onload fires initChart() — Chart is guaranteed
+            to exist at that point.
+         4. Non-chart UI (clock, limit bar) runs immediately because
+            the DOM is already ready (this script is at end of body).
+    ═══════════════════════════════════════════════════════════════ */
 
-    /* ── Period toggle ── */
-    function setPeriod(btn, period) {
-        document.querySelectorAll('.period-btn').forEach(function (b) {
-            b.classList.remove('active-period');
-        });
-        btn.classList.add('active-period');
-
-        var n = period === '1M' ? 1 : period === '3M' ? 3 : 6;
-        var slicedLabels = allLabels.slice(-n);
-        var slicedData   = allCo2.slice(-n);
-
-        emissionsChart.data.labels           = slicedLabels;
-        emissionsChart.data.datasets[0].data = slicedData;
-        emissionsChart.update('active');
-    }
-
-    /* ── Chart.js — Emissions Trend ── */
-
-    // Data is JSON-serialised by the view and injected via |safe.
-    // Declared at parse time so setPeriod() (defined above) can
-    // reference allLabels / allCo2 before the chart is initialised.
+    /* ── 1. Data from Django view (json.dumps → |safe) ── */
     var allLabels = {{ chart_labels|safe }};
     var allCo2    = {{ chart_co2|safe }};
-    var emissionsChart;
+    var emissionsChart = null;
 
-    /**
-     * initChart() — creates the Chart.js instance.
-     *
-     * Called via a readyState guard (see bottom of this block) instead
-     * of a plain DOMContentLoaded listener.  The guard handles two cases:
-     *
-     *   1. Script tag in <head> or runs before DOMContentLoaded fires →
-     *      addEventListener registers normally and fires when DOM is ready.
-     *
-     *   2. Script tag at end of <body> (e.g. inside the extra_scripts block
-     *      placed after body content) → DOMContentLoaded has ALREADY fired
-     *      by the time this script is evaluated, so addEventListener would
-     *      never run.  The readyState check catches this and calls
-     *      initChart() immediately instead.
-     *
-     * Without this guard the chart is silently never initialised in case 2,
-     * which is exactly what Django's block-inheritance produces.
-     */
+    /* ── 2. Utility: load an external script then call a callback ── */
+    function loadScript(src, onload) {
+        var s = document.createElement('script');
+        s.src = src;
+        s.onload = onload;
+        s.onerror = function() {
+            console.error('EcoTrack: failed to load ' + src);
+        };
+        document.head.appendChild(s);
+    }
+
+    /* ── 3. Build the Chart.js instance ── */
     function initChart() {
         var canvas = document.getElementById('emissionsChart');
-        if (!canvas) { return; }
-
-        // Guarantee the canvas fills its parent correctly.
-        // offsetParent must have a concrete height for
-        // maintainAspectRatio:false to work.
-        canvas.style.width  = '100%';
-        canvas.style.height = '100%';
+        if (!canvas) {
+            console.error('EcoTrack: #emissionsChart canvas not found');
+            return;
+        }
+        if (typeof Chart === 'undefined') {
+            console.error('EcoTrack: Chart.js did not load');
+            return;
+        }
 
         emissionsChart = new Chart(canvas, {
             type: 'line',
             data: {
                 labels: allLabels,
                 datasets: [{
-                    label: 'CO₂ Emissions (kg)',
-                    data: allCo2,
+                    label: 'CO\u2082 Emissions (kg)',
+                    data:  allCo2,
                     borderColor: '#39ff14',
                     backgroundColor: function(context) {
-                        // chartArea is undefined on the very first paint;
-                        // return a flat colour as fallback so Chart.js
-                        // doesn't throw and then redraws with the gradient.
-                        var chartArea = context.chart.chartArea;
-                        if (!chartArea) { return 'rgba(57,255,20,0.12)'; }
-                        var grad = context.chart.ctx.createLinearGradient(
-                            0, chartArea.top, 0, chartArea.bottom
+                        var area = context.chart.chartArea;
+                        if (!area) { return 'rgba(57,255,20,0.12)'; }
+                        var g = context.chart.ctx.createLinearGradient(
+                            0, area.top, 0, area.bottom
                         );
-                        grad.addColorStop(0, 'rgba(57,255,20,0.28)');
-                        grad.addColorStop(1, 'rgba(57,255,20,0.0)');
-                        return grad;
+                        g.addColorStop(0, 'rgba(57,255,20,0.28)');
+                        g.addColorStop(1, 'rgba(57,255,20,0.0)');
+                        return g;
                     },
-                    borderWidth: 2,
+                    borderWidth:          2,
                     pointBackgroundColor: '#39ff14',
                     pointBorderColor:     '#39ff14',
-                    pointRadius:      4,
-                    pointHoverRadius: 6,
+                    pointRadius:          4,
+                    pointHoverRadius:     6,
                     fill:    true,
                     tension: 0.4,
                 }]
@@ -795,22 +747,22 @@
             options: {
                 responsive:          true,
                 maintainAspectRatio: false,
-                animation: { duration: 600 },
+                animation:   { duration: 700 },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
                         backgroundColor: 'rgba(15,15,20,0.92)',
                         borderColor:     'rgba(57,255,20,0.25)',
-                        borderWidth: 1,
-                        titleColor: '#39ff14',
-                        titleFont:  { family: 'IBM Plex Mono', size: 11 },
-                        bodyColor:  'rgba(255,255,255,0.75)',
-                        bodyFont:   { family: 'IBM Plex Mono', size: 11 },
-                        padding: 10,
+                        borderWidth:  1,
+                        titleColor:   '#39ff14',
+                        titleFont:    { family: 'IBM Plex Mono', size: 11 },
+                        bodyColor:    'rgba(255,255,255,0.75)',
+                        bodyFont:     { family: 'IBM Plex Mono', size: 11 },
+                        padding:      10,
                         callbacks: {
                             label: function(ctx) {
-                                return ' ' + ctx.parsed.y.toLocaleString() + ' kg CO₂';
+                                return ' ' + ctx.parsed.y.toLocaleString() + ' kg CO\u2082';
                             }
                         }
                     }
@@ -823,15 +775,13 @@
                         border: { display: false }
                     },
                     y: {
-                        // min:0 + suggestedMax ensures axes and grid lines
-                        // are visible even when all data values are 0.0
-                        min: 0,
+                        min:          0,
                         suggestedMax: 10,
                         grid:   { color: 'rgba(255,255,255,0.04)', drawBorder: false },
                         ticks:  { color: 'rgba(255,255,255,0.35)',
                                   font:  { family: 'IBM Plex Mono', size: 10 },
-                                  callback: function(val) {
-                                      return val >= 1000 ? (val/1000).toFixed(1)+'k' : val;
+                                  callback: function(v) {
+                                      return v >= 1000 ? (v/1000).toFixed(1)+'k' : v;
                                   }},
                         border: { display: false }
                     }
@@ -840,13 +790,48 @@
         });
     }
 
-    // ── readyState guard ─────────────────────────────────────────────
-    // 'loading'         → DOM not yet built; wait for DOMContentLoaded.
-    // 'interactive'/'complete' → DOM already ready; call immediately.
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initChart);
-    } else {
-        initChart();   // script evaluated after DOM is ready
+    /* ── 4. Period toggle (called by onclick buttons in HTML) ── */
+    function setPeriod(btn, period) {
+        document.querySelectorAll('.period-btn').forEach(function(b) {
+            b.classList.remove('active-period');
+        });
+        btn.classList.add('active-period');
+        if (!emissionsChart) { return; }
+        var n = period === '1M' ? 1 : period === '3M' ? 3 : 6;
+        emissionsChart.data.labels           = allLabels.slice(-n);
+        emissionsChart.data.datasets[0].data = allCo2.slice(-n);
+        emissionsChart.update('active');
     }
+
+    /* ── 5. Non-chart UI — runs immediately (DOM is ready here) ── */
+
+    /* Live clock */
+    (function tick() {
+        var el = document.getElementById('liveClock');
+        if (el) {
+            var now = new Date();
+            el.textContent =
+                now.toLocaleTimeString('en-GB', { hour12: false }) + ' \u00b7 ' +
+                now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+        }
+        setTimeout(tick, 1000);
+    })();
+
+    /* Carbon limit bar animation */
+    (function() {
+        var bar = document.getElementById('limitBar');
+        if (bar) {
+            var target = bar.getAttribute('data-target') || '0%';
+            bar.style.width = '0%';
+            setTimeout(function() { bar.style.width = target; }, 150);
+        }
+    })();
+
+    /* ── 6. Kick off: load Chart.js, then draw ── */
+    loadScript(
+        'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
+        initChart
+    );
+
 </script>
 {% endblock %}
