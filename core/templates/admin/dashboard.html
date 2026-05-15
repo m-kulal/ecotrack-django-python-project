@@ -489,12 +489,12 @@
                 </div>
             </div>
 
-            {# Chart.js canvas — parent needs explicit height when maintainAspectRatio:false #}
             <div style="background:var(--surface-2);border:1px solid var(--border);
-                  border-radius:var(--radius);padding:1.25rem 1rem 0.75rem;
-                  overflow:hidden;position:relative;height:180px;">
-                <canvas id="emissionsChart"
-                        style="display:block;width:100%;height:100%;"></canvas>
+                  border-radius:var(--radius);padding:1rem 1rem 0.75rem;
+                  overflow:hidden;">
+                <div style="position:relative;height:180px;width:100%;">
+                    <canvas id="emissionsChart"></canvas>
+                </div>
             </div>
 
         </div>
@@ -695,14 +695,19 @@
     })();
 
     /* ── Animate progress bar on load ── */
-    document.addEventListener('DOMContentLoaded', function () {
+    function initLimitBar() {
         var bar = document.getElementById('limitBar');
         if (bar) {
             var target = bar.getAttribute('data-target') || '0%';
             bar.style.width = '0%';
             setTimeout(function () { bar.style.width = target; }, 150);
         }
-    });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLimitBar);
+    } else {
+        initLimitBar();
+    }
 
     /* ── Period toggle ── */
     function setPeriod(btn, period) {
@@ -721,17 +726,41 @@
     }
 
     /* ── Chart.js — Emissions Trend ── */
-    // Django view passes JSON arrays via |safe; declare them outside
-    // DOMContentLoaded so setPeriod() can also reference them.
+
+    // Data is JSON-serialised by the view and injected via |safe.
+    // Declared at parse time so setPeriod() (defined above) can
+    // reference allLabels / allCo2 before the chart is initialised.
     var allLabels = {{ chart_labels|safe }};
     var allCo2    = {{ chart_co2|safe }};
-    var emissionsChart;   // declared here so setPeriod() can access it
+    var emissionsChart;
 
-    // Defer chart creation until the DOM is fully painted so Chart.js
-    // can measure the canvas/parent dimensions correctly.
-    document.addEventListener('DOMContentLoaded', function () {
+    /**
+     * initChart() — creates the Chart.js instance.
+     *
+     * Called via a readyState guard (see bottom of this block) instead
+     * of a plain DOMContentLoaded listener.  The guard handles two cases:
+     *
+     *   1. Script tag in <head> or runs before DOMContentLoaded fires →
+     *      addEventListener registers normally and fires when DOM is ready.
+     *
+     *   2. Script tag at end of <body> (e.g. inside the extra_scripts block
+     *      placed after body content) → DOMContentLoaded has ALREADY fired
+     *      by the time this script is evaluated, so addEventListener would
+     *      never run.  The readyState check catches this and calls
+     *      initChart() immediately instead.
+     *
+     * Without this guard the chart is silently never initialised in case 2,
+     * which is exactly what Django's block-inheritance produces.
+     */
+    function initChart() {
         var canvas = document.getElementById('emissionsChart');
         if (!canvas) { return; }
+
+        // Guarantee the canvas fills its parent correctly.
+        // offsetParent must have a concrete height for
+        // maintainAspectRatio:false to work.
+        canvas.style.width  = '100%';
+        canvas.style.height = '100%';
 
         emissionsChart = new Chart(canvas, {
             type: 'line',
@@ -741,40 +770,43 @@
                     label: 'CO₂ Emissions (kg)',
                     data: allCo2,
                     borderColor: '#39ff14',
-                    // Gradient: built once the chart context exists
                     backgroundColor: function(context) {
+                        // chartArea is undefined on the very first paint;
+                        // return a flat colour as fallback so Chart.js
+                        // doesn't throw and then redraws with the gradient.
                         var chartArea = context.chart.chartArea;
-                        if (!chartArea) { return 'rgba(57,255,20,0.15)'; }
+                        if (!chartArea) { return 'rgba(57,255,20,0.12)'; }
                         var grad = context.chart.ctx.createLinearGradient(
                             0, chartArea.top, 0, chartArea.bottom
                         );
-                        grad.addColorStop(0,   'rgba(57,255,20,0.25)');
-                        grad.addColorStop(1,   'rgba(57,255,20,0)');
+                        grad.addColorStop(0, 'rgba(57,255,20,0.28)');
+                        grad.addColorStop(1, 'rgba(57,255,20,0.0)');
                         return grad;
                     },
                     borderWidth: 2,
                     pointBackgroundColor: '#39ff14',
-                    pointBorderColor: '#39ff14',
-                    pointRadius: 4,
+                    pointBorderColor:     '#39ff14',
+                    pointRadius:      4,
                     pointHoverRadius: 6,
-                    fill: true,
+                    fill:    true,
                     tension: 0.4,
                 }]
             },
             options: {
-                responsive: true,
+                responsive:          true,
                 maintainAspectRatio: false,
+                animation: { duration: 600 },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
                         backgroundColor: 'rgba(15,15,20,0.92)',
-                        borderColor: 'rgba(57,255,20,0.25)',
+                        borderColor:     'rgba(57,255,20,0.25)',
                         borderWidth: 1,
                         titleColor: '#39ff14',
-                        titleFont: { family: 'IBM Plex Mono', size: 11 },
-                        bodyColor: 'rgba(255,255,255,0.75)',
-                        bodyFont: { family: 'IBM Plex Mono', size: 11 },
+                        titleFont:  { family: 'IBM Plex Mono', size: 11 },
+                        bodyColor:  'rgba(255,255,255,0.75)',
+                        bodyFont:   { family: 'IBM Plex Mono', size: 11 },
                         padding: 10,
                         callbacks: {
                             label: function(ctx) {
@@ -785,27 +817,36 @@
                 },
                 scales: {
                     x: {
-                        grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-                        ticks: {
-                            color: 'rgba(255,255,255,0.35)',
-                            font: { family: 'IBM Plex Mono', size: 10 }
-                        },
+                        grid:   { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                        ticks:  { color: 'rgba(255,255,255,0.35)',
+                                  font:  { family: 'IBM Plex Mono', size: 10 } },
                         border: { display: false }
                     },
                     y: {
-                        grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-                        ticks: {
-                            color: 'rgba(255,255,255,0.35)',
-                            font: { family: 'IBM Plex Mono', size: 10 },
-                            callback: function(val) {
-                                return val >= 1000 ? (val/1000).toFixed(1) + 'k' : val;
-                            }
-                        },
+                        // min:0 + suggestedMax ensures axes and grid lines
+                        // are visible even when all data values are 0.0
+                        min: 0,
+                        suggestedMax: 10,
+                        grid:   { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                        ticks:  { color: 'rgba(255,255,255,0.35)',
+                                  font:  { family: 'IBM Plex Mono', size: 10 },
+                                  callback: function(val) {
+                                      return val >= 1000 ? (val/1000).toFixed(1)+'k' : val;
+                                  }},
                         border: { display: false }
                     }
                 }
             }
         });
-    });
+    }
+
+    // ── readyState guard ─────────────────────────────────────────────
+    // 'loading'         → DOM not yet built; wait for DOMContentLoaded.
+    // 'interactive'/'complete' → DOM already ready; call immediately.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initChart);
+    } else {
+        initChart();   // script evaluated after DOM is ready
+    }
 </script>
 {% endblock %}
