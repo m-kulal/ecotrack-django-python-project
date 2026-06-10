@@ -3,833 +3,1074 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EcoTrack — Corporate Carbon Footprint Intelligence</title>
+    <title>EcoTrack — Enterprise Carbon Auditing Ledger</title>
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
-
-    <!-- Fonts: Syne (display) + DM Sans (body) -->
+    <!-- Fonts: Space Grotesk (display) + Inter (body) + JetBrains Mono (data/code) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
     <style>
-            /* ═══════════════════════════════════════════════════
-           DESIGN TOKENS
+        /* ═══════════════════════════════════════════════════
+           DESIGN TOKENS — Emerald Matrix / Obsidian Glass
         ═══════════════════════════════════════════════════ */
-            :root {
-                --bg: #080808;
-                --bg-2: #0c0c0c;
-                --surface: #0f0f0f;
-                --surface-2: #141414;
-                --surface-3: #1a1a1a;
-                --border: rgba(255,255,255,0.06);
-                --border-2: rgba(255,255,255,0.10);
-                --accent: #c8f53e;
-                --accent-dim: rgba(200,245,62,0.12);
-                --accent-glow: rgba(200,245,62,0.30);
-                --accent-glow2: rgba(200,245,62,0.08);
-                --text: #f2f2f2;
-                --text-2: #a0a0a0;
-                --text-3: #5a5a5a;
-                --font-display: 'Syne', sans-serif;
-                --font-body: 'DM Sans', sans-serif;
-                --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-            }
+        :root {
+            --bg: #050506;
+            --bg-2: #0a0a0d;
+            --surface: #121218;
+            --surface-2: #18181f;
+            --surface-3: #1e1e28;
+            --border: rgba(255,255,255,0.05);
+            --border-2: rgba(255,255,255,0.09);
+            --border-em: rgba(16,185,129,0.18);
+            --accent: #10b981;
+            --accent-dim: rgba(16,185,129,0.08);
+            --accent-glow: rgba(16,185,129,0.22);
+            --accent-glow2: rgba(16,185,129,0.05);
+            --accent-hi: #34d399;
+            --red-dim: rgba(239,68,68,0.12);
+            --red: #f87171;
+            --amber: #fbbf24;
+            --amber-dim: rgba(251,191,36,0.10);
+            --text: #e8e8ed;
+            --text-2: #8b8b9a;
+            --text-3: #45454f;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
 
-            /* ═══════════════════════════════════════════════════
+        /* ═══════════════════════════════════════════════════
            RESET & BASE
         ═══════════════════════════════════════════════════ */
-            *, *::before, *::after {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-weight: 400;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+            /* Subtle scanline / grain overlay */
+            body::after {
+                content: '';
+                position: fixed;
+                inset: 0;
+                background-image: repeating-linear-gradient( 0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px );
+                pointer-events: none;
+                z-index: 9999;
             }
 
-            html {
-                scroll-behavior: smooth;
-            }
-
-            body {
-                background: var(--bg);
-                color: var(--text);
-                font-family: var(--font-body);
-                font-weight: 400;
-                line-height: 1.65;
-                overflow-x: hidden;
-                cursor: default;
-            }
-
-                /* Subtle global grain texture */
-                body::after {
-                    content: '';
-                    position: fixed;
-                    inset: 0;
-                    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-                    pointer-events: none;
-                    z-index: 9999;
-                    opacity: 0.4;
-                }
-
-            /* ═══════════════════════════════════════════════════
+        /* ═══════════════════════════════════════════════════
            TYPOGRAPHY
         ═══════════════════════════════════════════════════ */
-            h1, h2, h3, h4, .brand-name {
-                font-family: var(--font-display);
-            }
+        h1, h2, h3, .brand-name {
+            font-family: var(--font-display);
+        }
 
-            .display-headline {
-                font-size: clamp(2.8rem, 6vw, 5.2rem);
-                font-weight: 800;
-                line-height: 1.08;
-                letter-spacing: -0.04em;
-                color: var(--text);
-            }
+        .display-headline {
+            font-size: clamp(2.6rem, 5.5vw, 4.8rem);
+            font-weight: 700;
+            line-height: 1.06;
+            letter-spacing: -0.03em;
+            color: var(--text);
+        }
 
-                .display-headline .accent-word {
-                    color: var(--accent);
-                    position: relative;
-                    display: inline-block;
-                }
-
-                    .display-headline .accent-word::after {
-                        content: '';
-                        position: absolute;
-                        bottom: 4px;
-                        left: 0;
-                        width: 100%;
-                        height: 2px;
-                        background: var(--accent);
-                        opacity: 0.4;
-                        border-radius: 2px;
-                    }
-
-            .section-title {
-                font-size: clamp(1.8rem, 3.5vw, 2.6rem);
-                font-weight: 700;
-                letter-spacing: -0.03em;
-                color: var(--text);
-                line-height: 1.15;
-            }
-
-            .section-eyebrow {
-                font-size: 0.7rem;
-                font-weight: 600;
-                letter-spacing: 0.14em;
-                text-transform: uppercase;
+            .display-headline .em {
                 color: var(--accent);
-                display: inline-block;
-                margin-bottom: 0.85rem;
             }
 
-            /* ═══════════════════════════════════════════════════
+        .section-title {
+            font-size: clamp(1.6rem, 3vw, 2.4rem);
+            font-weight: 600;
+            letter-spacing: -0.025em;
+            color: var(--text);
+            line-height: 1.2;
+        }
+
+        .section-eyebrow {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--accent);
+            display: inline-block;
+            margin-bottom: 0.8rem;
+        }
+
+        .section-desc {
+            color: var(--text-2);
+            font-size: 0.95rem;
+            max-width: 460px;
+            margin: 0.65rem auto 0;
+            line-height: 1.8;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           INDUSTRIAL BADGE SYSTEM
+        ═══════════════════════════════════════════════════ */
+        .ind-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: var(--text-3);
+            border: 1px solid var(--border);
+            padding: 0.25rem 0.65rem;
+            border-radius: 3px;
+            background: var(--surface);
+            text-transform: uppercase;
+        }
+
+            .ind-badge.active {
+                color: var(--accent);
+                border-color: var(--border-em);
+                background: var(--accent-dim);
+            }
+
+            .ind-badge .led {
+                width: 5px;
+                height: 5px;
+                border-radius: 50%;
+                background: var(--accent);
+                box-shadow: 0 0 6px var(--accent);
+                animation: led-blink 2.8s ease-in-out infinite;
+            }
+
+        @keyframes led-blink {
+            0%,100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.35;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════
            BUTTONS
         ═══════════════════════════════════════════════════ */
-            .btn-eco-primary {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.5rem;
-                background: var(--accent);
-                color: #060606;
-                font-family: var(--font-body);
-                font-weight: 600;
-                font-size: 0.9rem;
-                letter-spacing: -0.01em;
-                padding: 0.75rem 1.6rem;
-                border-radius: 8px;
-                border: none;
-                text-decoration: none;
-                cursor: pointer;
-                position: relative;
-                overflow: hidden;
-                transition: transform 0.22s var(--ease-spring), box-shadow 0.22s ease;
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--accent);
+            color: #030505;
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 0.875rem;
+            letter-spacing: -0.01em;
+            padding: 0.72rem 1.5rem;
+            border-radius: 5px;
+            border: none;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+        }
+
+            .btn-primary:hover {
+                background: var(--accent-hi);
+                box-shadow: 0 6px 28px var(--accent-glow);
+                transform: translateY(-2px);
+                color: #030505;
             }
 
-                .btn-eco-primary::before {
-                    content: '';
-                    position: absolute;
-                    inset: 0;
-                    background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 55%);
-                }
+        .btn-ghost {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: transparent;
+            color: var(--text-2);
+            font-family: var(--font-body);
+            font-weight: 500;
+            font-size: 0.875rem;
+            padding: 0.72rem 1.5rem;
+            border-radius: 5px;
+            border: 1px solid var(--border-2);
+            text-decoration: none;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.2s;
+        }
 
-                .btn-eco-primary:hover {
-                    transform: translateY(-3px);
-                    box-shadow: 0 10px 40px var(--accent-glow), 0 0 0 1px var(--accent);
-                    color: #060606;
-                }
-
-                .btn-eco-primary:active {
-                    transform: translateY(-1px);
-                }
-
-            .btn-eco-ghost {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.5rem;
-                background: transparent;
-                color: var(--text-2);
-                font-family: var(--font-body);
-                font-weight: 500;
-                font-size: 0.9rem;
-                padding: 0.75rem 1.6rem;
-                border-radius: 8px;
-                border: 1px solid var(--border-2);
-                text-decoration: none;
-                cursor: pointer;
-                transition: border-color 0.2s, color 0.2s, transform 0.2s, background 0.2s;
+            .btn-ghost:hover {
+                border-color: var(--border-em);
+                color: var(--accent);
+                background: var(--accent-dim);
+                transform: translateY(-2px);
             }
 
-                .btn-eco-ghost:hover {
-                    border-color: rgba(200,245,62,0.4);
-                    color: var(--accent);
-                    background: var(--accent-dim);
-                    transform: translateY(-2px);
-                }
-
-            /* ═══════════════════════════════════════════════════
+        /* ═══════════════════════════════════════════════════
            NAV
         ═══════════════════════════════════════════════════ */
-            .eco-nav {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                z-index: 1000;
-                padding: 1.1rem 0;
-                background: rgba(8,8,8,0.75);
-                backdrop-filter: blur(20px) saturate(180%);
-                -webkit-backdrop-filter: blur(20px) saturate(180%);
-                border-bottom: 1px solid var(--border);
-                transition: padding 0.3s, box-shadow 0.3s;
+        .eco-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1rem 0;
+            background: rgba(5,5,6,0.82);
+            backdrop-filter: blur(18px) saturate(160%);
+            -webkit-backdrop-filter: blur(18px) saturate(160%);
+            border-bottom: 1px solid var(--border);
+            transition: padding 0.3s, box-shadow 0.3s;
+        }
+
+            .eco-nav.scrolled {
+                padding: 0.75rem 0;
+                box-shadow: 0 1px 30px rgba(0,0,0,0.7);
             }
 
-                .eco-nav.scrolled {
-                    padding: 0.8rem 0;
-                    box-shadow: 0 1px 40px rgba(0,0,0,0.6);
-                }
+        .nav-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
 
-            .nav-inner {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                max-width: 1200px;
-                margin: 0 auto;
-                padding: 0 2rem;
-            }
+        .brand-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
 
-            .brand-name {
-                font-size: 1.25rem;
-                font-weight: 700;
-                color: var(--text);
-                text-decoration: none;
-                letter-spacing: -0.03em;
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-            }
+        .brand-tag {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            color: var(--text-3);
+            border: 1px solid var(--border);
+            padding: 0.15rem 0.45rem;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
 
-            .brand-dot {
-                width: 8px;
-                height: 8px;
-                background: var(--accent);
-                border-radius: 50%;
-                box-shadow: 0 0 10px var(--accent-glow);
-                animation: pulse-dot 2.5s ease-in-out infinite;
-            }
+        .brand-mark {
+            width: 28px;
+            height: 28px;
+            background: var(--accent-dim);
+            border: 1px solid var(--border-em);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-            @keyframes pulse-dot {
-                0%, 100% {
-                    box-shadow: 0 0 8px var(--accent-glow);
-                }
-
-                50% {
-                    box-shadow: 0 0 20px var(--accent-glow), 0 0 40px var(--accent-glow2);
-                }
-            }
-
-            .nav-links {
-                display: flex;
-                align-items: center;
-                gap: 0.25rem;
-                list-style: none;
-            }
-
-                .nav-links a {
-                    color: var(--text-2);
-                    text-decoration: none;
-                    font-size: 0.875rem;
-                    font-weight: 500;
-                    padding: 0.45rem 0.9rem;
-                    border-radius: 6px;
-                    transition: color 0.18s, background 0.18s;
-                }
-
-                    .nav-links a:hover {
-                        color: var(--text);
-                        background: rgba(255,255,255,0.05);
-                    }
-
-            .nav-cta {
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
-            }
-
-            .nav-login {
-                color: var(--text-2);
-                text-decoration: none;
-                font-size: 0.875rem;
-                font-weight: 500;
-                transition: color 0.18s;
-            }
-
-                .nav-login:hover {
-                    color: var(--text);
-                }
-
-            /* Mobile hamburger */
-            .nav-toggle {
-                display: none;
-                flex-direction: column;
-                gap: 5px;
-                cursor: pointer;
-                padding: 4px;
-                background: none;
-                border: none;
-            }
-
-                .nav-toggle span {
-                    display: block;
-                    width: 22px;
-                    height: 2px;
-                    background: var(--text-2);
-                    border-radius: 2px;
-                    transition: 0.3s;
-                }
-
-            @media (max-width: 768px) {
-                .nav-links, .nav-login {
-                    display: none !important;
-                }
-
-                .nav-toggle {
-                    display: flex;
-                }
-            }
-
-            /* ═══════════════════════════════════════════════════
-           HERO
-        ═══════════════════════════════════════════════════ */
-            .hero {
-                min-height: 100vh;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-                padding: 9rem 1.5rem 6rem;
-                position: relative;
-                overflow: hidden;
-            }
-
-                /* Radial glow backdrop */
-                .hero::before {
-                    content: '';
-                    position: absolute;
-                    top: -20%;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    width: 900px;
-                    height: 600px;
-                    background: radial-gradient(ellipse at 50% 40%, rgba(200,245,62,0.09) 0%, transparent 65%);
-                    pointer-events: none;
-                }
-
-                /* Grid lines */
-                .hero::after {
-                    content: '';
-                    position: absolute;
-                    inset: 0;
-                    background-image: repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(255,255,255,0.018) 79px, rgba(255,255,255,0.018) 80px), repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(255,255,255,0.018) 79px, rgba(255,255,255,0.018) 80px);
-                    pointer-events: none;
-                }
-
-            .hero-badge {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.5rem;
-                background: var(--accent-dim);
-                border: 1px solid rgba(200,245,62,0.2);
-                border-radius: 999px;
-                padding: 0.35rem 1rem;
-                font-size: 0.78rem;
-                font-weight: 500;
-                color: var(--accent);
-                margin-bottom: 2rem;
-                animation: fadeDown 0.7s both;
-                position: relative;
-                z-index: 1;
-            }
-
-                .hero-badge .badge-dot {
-                    width: 6px;
-                    height: 6px;
-                    background: var(--accent);
-                    border-radius: 50%;
-                    animation: pulse-dot 2s ease-in-out infinite;
-                }
-
-            .hero-headline {
-                max-width: 820px;
-                margin: 0 auto 1.5rem;
-                position: relative;
-                z-index: 1;
-                animation: fadeDown 0.7s 0.08s both;
-            }
-
-            .hero-sub {
-                max-width: 520px;
-                margin: 0 auto 2.75rem;
-                color: var(--text-2);
-                font-size: 1.05rem;
-                font-weight: 300;
-                line-height: 1.7;
-                position: relative;
-                z-index: 1;
-                animation: fadeDown 0.7s 0.16s both;
-            }
-
-            .hero-actions {
-                display: flex;
-                gap: 1rem;
-                justify-content: center;
-                flex-wrap: wrap;
-                position: relative;
-                z-index: 1;
-                animation: fadeDown 0.7s 0.24s both;
-            }
-
-            /* Floating stat chips */
-            .hero-stats {
-                display: flex;
-                justify-content: center;
-                gap: 2rem;
-                margin-top: 5rem;
-                position: relative;
-                z-index: 1;
-                animation: fadeDown 0.7s 0.35s both;
-                flex-wrap: wrap;
-            }
-
-            .stat-chip {
-                text-align: center;
-            }
-
-            .stat-num {
-                font-family: var(--font-display);
-                font-size: 2rem;
-                font-weight: 800;
-                color: var(--accent);
-                letter-spacing: -0.04em;
-                line-height: 1;
-            }
-
-            .stat-label {
-                font-size: 0.75rem;
-                color: var(--text-3);
-                margin-top: 0.3rem;
-                text-transform: uppercase;
-                letter-spacing: 0.08em;
-            }
-
-            .stat-divider {
-                width: 1px;
-                background: var(--border-2);
-                align-self: stretch;
-            }
-
-            @keyframes fadeDown {
-                from {
-                    opacity: 0;
-                    transform: translateY(-16px);
-                }
-
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            /* ═══════════════════════════════════════════════════
-           SECTION SHARED
-        ═══════════════════════════════════════════════════ */
-            .section {
-                padding: 6rem 1.5rem;
-                max-width: 1200px;
-                margin: 0 auto;
-            }
-
-            .section-header {
-                text-align: center;
-                margin-bottom: 4rem;
-            }
-
-            .section-desc {
-                color: var(--text-2);
-                font-size: 1rem;
-                max-width: 480px;
-                margin: 0.75rem auto 0;
-                line-height: 1.75;
-            }
-
-            /* ═══════════════════════════════════════════════════
-           FEATURES
-        ═══════════════════════════════════════════════════ */
-            .features-wrap {
-                padding: 0 1.5rem 6rem;
-            }
-
-            .features-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-                gap: 1.25rem;
-                max-width: 1200px;
-                margin: 0 auto;
-            }
-
-            .feature-card {
-                background: var(--surface);
-                border: 1px solid var(--border);
-                border-radius: 14px;
-                padding: 2rem 1.75rem;
-                position: relative;
-                overflow: hidden;
-                transition: border-color 0.3s, transform 0.3s var(--ease-spring), box-shadow 0.3s;
-                cursor: default;
-            }
-
-                .feature-card::before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    height: 1px;
-                    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-                    opacity: 0;
-                    transition: opacity 0.3s;
-                }
-
-                .feature-card::after {
-                    content: '';
-                    position: absolute;
-                    top: -60px;
-                    right: -60px;
-                    width: 160px;
-                    height: 160px;
-                    background: radial-gradient(circle, var(--accent-glow2) 0%, transparent 70%);
-                    opacity: 0;
-                    transition: opacity 0.4s;
-                }
-
-                .feature-card:hover {
-                    border-color: rgba(200,245,62,0.25);
-                    transform: translateY(-5px);
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(200,245,62,0.1);
-                }
-
-                    .feature-card:hover::before {
-                        opacity: 1;
-                    }
-
-                    .feature-card:hover::after {
-                        opacity: 1;
-                    }
-
-            .feature-icon {
-                width: 44px;
-                height: 44px;
-                background: var(--accent-dim);
-                border: 1px solid rgba(200,245,62,0.15);
-                border-radius: 10px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin-bottom: 1.25rem;
-                position: relative;
-                z-index: 1;
-                transition: box-shadow 0.3s;
-            }
-
-            .feature-card:hover .feature-icon {
-                box-shadow: 0 0 20px var(--accent-glow2);
-            }
-
-            .feature-icon svg {
+            .brand-mark svg {
                 display: block;
             }
 
-            .feature-title {
-                font-family: var(--font-display);
-                font-size: 1.05rem;
-                font-weight: 700;
-                color: var(--text);
-                margin-bottom: 0.6rem;
-                position: relative;
-                z-index: 1;
-            }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.15rem;
+            list-style: none;
+        }
 
-            .feature-desc {
-                font-size: 0.875rem;
-                color: var(--text-2);
-                line-height: 1.7;
-                position: relative;
-                z-index: 1;
-            }
-
-            /* ═══════════════════════════════════════════════════
-           HOW IT WORKS
-        ═══════════════════════════════════════════════════ */
-            .how-section {
-                padding: 6rem 1.5rem;
-                background: var(--bg-2);
-                border-top: 1px solid var(--border);
-                border-bottom: 1px solid var(--border);
-                position: relative;
-                overflow: hidden;
-            }
-
-                .how-section::before {
-                    content: '';
-                    position: absolute;
-                    bottom: -100px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    width: 600px;
-                    height: 400px;
-                    background: radial-gradient(ellipse, rgba(200,245,62,0.04) 0%, transparent 70%);
-                    pointer-events: none;
-                }
-
-            .how-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                gap: 2rem;
-                max-width: 1000px;
-                margin: 0 auto;
-                position: relative;
-            }
-
-                /* connector line between steps on desktop */
-                .how-grid::before {
-                    content: '';
-                    position: absolute;
-                    top: 28px;
-                    left: calc(16.66% + 22px);
-                    right: calc(16.66% + 22px);
-                    height: 1px;
-                    background: linear-gradient(90deg, transparent, var(--border-2), var(--border-2), transparent);
-                }
-
-            .step-card {
-                text-align: center;
-                padding: 0 1rem;
-            }
-
-            .step-num {
-                width: 56px;
-                height: 56px;
-                background: var(--surface);
-                border: 1px solid var(--border-2);
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin: 0 auto 1.5rem;
-                font-family: var(--font-display);
-                font-size: 1.1rem;
-                font-weight: 800;
-                color: var(--accent);
-                position: relative;
-                z-index: 1;
-                transition: border-color 0.3s, box-shadow 0.3s;
-            }
-
-            .step-card:hover .step-num {
-                border-color: rgba(200,245,62,0.4);
-                box-shadow: 0 0 24px var(--accent-glow2);
-            }
-
-            .step-title {
-                font-family: var(--font-display);
-                font-size: 1rem;
-                font-weight: 700;
-                color: var(--text);
-                margin-bottom: 0.5rem;
-            }
-
-            .step-desc {
-                font-size: 0.85rem;
-                color: var(--text-2);
-                line-height: 1.7;
-            }
-
-            /* ═══════════════════════════════════════════════════
-           CTA SECTION
-        ═══════════════════════════════════════════════════ */
-            .cta-section {
-                padding: 7rem 1.5rem;
-                text-align: center;
-                position: relative;
-                overflow: hidden;
-            }
-
-                .cta-section::before {
-                    content: '';
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    width: 800px;
-                    height: 500px;
-                    background: radial-gradient(ellipse, rgba(200,245,62,0.07) 0%, transparent 65%);
-                    pointer-events: none;
-                }
-
-            .cta-inner {
-                max-width: 640px;
-                margin: 0 auto;
-                position: relative;
-                z-index: 1;
-            }
-
-            .cta-card {
-                background: var(--surface);
-                border: 1px solid rgba(200,245,62,0.12);
-                border-radius: 20px;
-                padding: 3.5rem 2.5rem;
-                box-shadow: 0 0 80px rgba(200,245,62,0.04), 0 40px 80px rgba(0,0,0,0.5);
-            }
-
-            .cta-title {
-                font-size: clamp(1.6rem, 3.5vw, 2.4rem);
-                font-weight: 800;
-                letter-spacing: -0.03em;
-                margin-bottom: 1rem;
-                color: var(--text);
-            }
-
-            .cta-sub {
-                color: var(--text-2);
-                font-size: 0.95rem;
-                margin-bottom: 2rem;
-                line-height: 1.7;
-            }
-
-            /* ═══════════════════════════════════════════════════
-           FOOTER
-        ═══════════════════════════════════════════════════ */
-            footer {
-                border-top: 1px solid var(--border);
-                padding: 2rem 1.5rem;
-                background: var(--bg);
-            }
-
-            .footer-inner {
-                max-width: 1200px;
-                margin: 0 auto;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                flex-wrap: wrap;
-                gap: 1rem;
-            }
-
-            .footer-brand {
-                font-family: var(--font-display);
-                font-size: 1rem;
-                font-weight: 700;
+            .nav-links a {
                 color: var(--text-2);
                 text-decoration: none;
-                letter-spacing: -0.02em;
+                font-size: 0.82rem;
+                font-weight: 500;
+                padding: 0.4rem 0.85rem;
+                border-radius: 4px;
+                transition: color 0.18s, background 0.18s;
+            }
+
+                .nav-links a:hover {
+                    color: var(--text);
+                    background: rgba(255,255,255,0.04);
+                }
+
+        .nav-cta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .nav-login {
+            color: var(--text-2);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 500;
+            transition: color 0.18s;
+        }
+
+            .nav-login:hover {
+                color: var(--text);
+            }
+
+        .nav-toggle {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            padding: 4px;
+            background: none;
+            border: none;
+        }
+
+            .nav-toggle span {
+                display: block;
+                width: 20px;
+                height: 1.5px;
+                background: var(--text-2);
+                border-radius: 2px;
+                transition: 0.3s;
+            }
+
+        @media (max-width: 768px) {
+            .nav-links, .nav-login {
+                display: none !important;
+            }
+
+            .nav-toggle {
+                display: flex;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════
+           HERO
+        ═══════════════════════════════════════════════════ */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 9rem 1.5rem 5rem;
+            position: relative;
+            overflow: hidden;
+        }
+            /* Radial glow */
+            .hero::before {
+                content: '';
+                position: absolute;
+                top: -10%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 1000px;
+                height: 600px;
+                background: radial-gradient(ellipse at 50% 35%, rgba(16,185,129,0.07) 0%, transparent 62%);
+                pointer-events: none;
+            }
+            /* Fine grid */
+            .hero::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background-image: repeating-linear-gradient(0deg, transparent, transparent 63px, rgba(255,255,255,0.013) 63px, rgba(255,255,255,0.013) 64px), repeating-linear-gradient(90deg, transparent, transparent 63px, rgba(255,255,255,0.013) 63px, rgba(255,255,255,0.013) 64px);
+                pointer-events: none;
+            }
+
+        .hero-eyebrow {
+            position: relative;
+            z-index: 1;
+            margin-bottom: 2rem;
+            animation: fadeUp 0.7s both;
+        }
+
+        .hero-headline {
+            max-width: 840px;
+            margin: 0 auto 0.5rem;
+            position: relative;
+            z-index: 1;
+            animation: fadeUp 0.7s 0.08s both;
+        }
+
+        .hero-sub-head {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-3);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
+            animation: fadeUp 0.7s 0.14s both;
+        }
+
+        .hero-sub {
+            max-width: 500px;
+            margin: 0 auto 2.5rem;
+            color: var(--text-2);
+            font-size: 1rem;
+            font-weight: 300;
+            line-height: 1.75;
+            position: relative;
+            z-index: 1;
+            animation: fadeUp 0.7s 0.18s both;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 0.85rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            animation: fadeUp 0.7s 0.26s both;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ─── TERMINAL MOCKUP ─── */
+        .terminal-wrap {
+            margin-top: 4rem;
+            width: 100%;
+            max-width: 820px;
+            position: relative;
+            z-index: 1;
+            animation: fadeUp 0.7s 0.36s both;
+        }
+
+        .terminal {
+            background: var(--surface);
+            border: 1px solid var(--border-2);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 0 1px rgba(16,185,129,0.06), 0 30px 80px rgba(0,0,0,0.6);
+            text-align: left;
+        }
+
+        .terminal-bar {
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border);
+            padding: 0.65rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .terminal-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+            .terminal-dots span {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+            }
+
+                .terminal-dots span:nth-child(1) {
+                    background: #ff5f57;
+                }
+
+                .terminal-dots span:nth-child(2) {
+                    background: #febc2e;
+                }
+
+                .terminal-dots span:nth-child(3) {
+                    background: #28c840;
+                }
+
+        .terminal-title {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--text-3);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .terminal-status {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+            .terminal-status .led {
+                width: 5px;
+                height: 5px;
+                border-radius: 50%;
+                background: var(--accent);
+                box-shadow: 0 0 5px var(--accent);
+                animation: led-blink 2.2s ease-in-out infinite;
+            }
+
+        .terminal-body {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .t-line {
+            font-family: var(--font-mono);
+            font-size: 0.775rem;
+            line-height: 1.9;
+            display: flex;
+            gap: 0.75rem;
+            align-items: baseline;
+        }
+
+        .t-prompt {
+            color: var(--accent);
+            user-select: none;
+        }
+
+        .t-cmd {
+            color: var(--text);
+        }
+
+        .t-comment {
+            color: var(--text-3);
+        }
+
+        .t-key {
+            color: #7dd3fc;
+        }
+
+        .t-val-em {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .t-val-warn {
+            color: var(--amber);
+        }
+
+        .t-val-err {
+            color: var(--red);
+        }
+
+        .t-val-dim {
+            color: var(--text-2);
+        }
+
+        .t-scope {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            font-weight: 600;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            margin-right: 0.3rem;
+            letter-spacing: 0.04em;
+            vertical-align: middle;
+        }
+
+        .t-scope-1 {
+            background: rgba(239,68,68,0.15);
+            color: #f87171;
+            border: 1px solid rgba(239,68,68,0.2);
+        }
+
+        .t-scope-2 {
+            background: rgba(251,191,36,0.12);
+            color: #fbbf24;
+            border: 1px solid rgba(251,191,36,0.2);
+        }
+
+        .t-scope-3 {
+            background: rgba(16,185,129,0.10);
+            color: #10b981;
+            border: 1px solid rgba(16,185,129,0.2);
+        }
+
+        .t-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 0.5rem 0;
+        }
+
+        .t-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: var(--accent);
+            opacity: 0.85;
+            vertical-align: middle;
+            margin-left: 2px;
+            animation: cursor-blink 1.1s step-end infinite;
+        }
+
+        @keyframes cursor-blink {
+            0%,100% {
+                opacity: 0.85;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .terminal-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-top: 1px solid var(--border);
+        }
+
+        .t-metric {
+            padding: 0.85rem 1rem;
+            border-right: 1px solid var(--border);
+        }
+
+            .t-metric:last-child {
+                border-right: none;
+            }
+
+        .t-metric-label {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-bottom: 0.3rem;
+        }
+
+        .t-metric-val {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: -0.02em;
+        }
+
+            .t-metric-val.warn {
+                color: var(--amber);
+            }
+
+        .t-metric-sub {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            color: var(--text-3);
+            margin-top: 0.1rem;
+        }
+
+        @media (max-width: 600px) {
+            .terminal-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .t-metric {
+                border-bottom: 1px solid var(--border);
+            }
+
+            .terminal-body {
+                padding: 1rem;
+            }
+        }
+
+        /* ═══════════════════════════════════════════════════
+           SECTION SHARED
+        ═══════════════════════════════════════════════════ */
+        .section {
+            padding: 6rem 1.5rem;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           FEATURES
+        ═══════════════════════════════════════════════════ */
+        .features-wrap {
+            padding: 5rem 1.5rem 6rem;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--border);
+        }
+
+        .feature-card {
+            background: var(--surface);
+            padding: 2rem 1.75rem;
+            position: relative;
+            overflow: hidden;
+            transition: background 0.25s;
+            cursor: default;
+        }
+
+            .feature-card:hover {
+                background: var(--surface-2);
+            }
+
+            .feature-card::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 1px;
+                background: linear-gradient(90deg, transparent, var(--accent), transparent);
+                opacity: 0;
+                transition: opacity 0.3s;
+            }
+
+            .feature-card:hover::after {
+                opacity: 1;
+            }
+
+        .feature-index {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            font-weight: 600;
+            color: var(--text-3);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 1.2rem;
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent-dim);
+            border: 1px solid var(--border-em);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.1rem;
+        }
+
+        .feature-title {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.55rem;
+        }
+
+        .feature-desc {
+            font-size: 0.855rem;
+            color: var(--text-2);
+            line-height: 1.75;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           ARCHITECTURE / HOW IT WORKS
+        ═══════════════════════════════════════════════════ */
+        .arch-section {
+            padding: 6rem 1.5rem;
+            background: var(--bg-2);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+            .arch-section::before {
+                content: '';
+                position: absolute;
+                bottom: -80px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 700px;
+                height: 400px;
+                background: radial-gradient(ellipse, rgba(16,185,129,0.04) 0%, transparent 70%);
+                pointer-events: none;
+            }
+
+        .arch-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .pipeline-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 3rem;
+            position: relative;
+        }
+            /* connector line on desktop */
+            .pipeline-grid::before {
+                content: '';
+                position: absolute;
+                top: 68px;
+                left: calc(16.66% + 28px);
+                right: calc(16.66% + 28px);
+                height: 1px;
+                background: linear-gradient(90deg, transparent, var(--border-em), var(--border-em), transparent);
+                pointer-events: none;
+                z-index: 0;
+            }
+
+        .pipeline-step {
+            background: var(--surface);
+            padding: 2.25rem 2rem;
+            border-right: 1px solid var(--border);
+            text-align: center;
+            position: relative;
+        }
+
+            .pipeline-step:last-child {
+                border-right: none;
+            }
+
+        .step-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--accent);
+            background: var(--accent-dim);
+            border: 1px solid var(--border-em);
+            border-radius: 4px;
+            padding: 0.3rem 0.65rem;
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.05em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-title {
+            font-family: var(--font-display);
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.6rem;
+        }
+
+        .step-desc {
+            font-size: 0.855rem;
+            color: var(--text-2);
+            line-height: 1.75;
+        }
+
+        @media (max-width: 768px) {
+            .pipeline-grid {
+                grid-template-columns: 1fr;
+            }
+
+                .pipeline-grid::before {
+                    display: none;
+                }
+
+            .pipeline-step {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+                .pipeline-step:last-child {
+                    border-bottom: none;
+                }
+        }
+
+        /* ═══════════════════════════════════════════════════
+           CTA
+        ═══════════════════════════════════════════════════ */
+        .cta-section {
+            padding: 7rem 1.5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+            .cta-section::before {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 900px;
+                height: 500px;
+                background: radial-gradient(ellipse, rgba(16,185,129,0.06) 0%, transparent 65%);
+                pointer-events: none;
+            }
+
+        .cta-inner {
+            max-width: 640px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta-card {
+            background: var(--surface);
+            border: 1px solid var(--border-em);
+            border-radius: 8px;
+            padding: 3.5rem 2.5rem;
+            box-shadow: 0 0 80px rgba(16,185,129,0.04), 0 40px 80px rgba(0,0,0,0.5);
+        }
+
+        .cta-matrix-label {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            color: var(--text-3);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+
+        .cta-title {
+            font-size: clamp(1.55rem, 3.2vw, 2.2rem);
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .cta-sub {
+            color: var(--text-2);
+            font-size: 0.93rem;
+            margin-bottom: 2rem;
+            line-height: 1.75;
+        }
+
+        .cta-compliance {
+            margin-top: 1.75rem;
+            display: flex;
+            gap: 0.6rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           FOOTER
+        ═══════════════════════════════════════════════════ */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 1.75rem 1.5rem;
+            background: var(--bg);
+        }
+
+        .footer-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-brand {
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-2);
+            text-decoration: none;
+            letter-spacing: -0.02em;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+        }
+
+            .footer-links a {
+                font-size: 0.78rem;
+                color: var(--text-3);
+                text-decoration: none;
+                transition: color 0.18s;
+            }
+
+                .footer-links a:hover {
+                    color: var(--text-2);
+                }
+
+        .footer-copy {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            color: var(--text-3);
+        }
+
+        @media (max-width: 768px) {
+            .footer-inner {
+                justify-content: center;
+                text-align: center;
             }
 
             .footer-links {
-                display: flex;
-                gap: 1.5rem;
-                list-style: none;
+                justify-content: center;
             }
+        }
 
-                .footer-links a {
-                    font-size: 0.8rem;
-                    color: var(--text-3);
-                    text-decoration: none;
-                    transition: color 0.18s;
-                }
-
-                    .footer-links a:hover {
-                        color: var(--text-2);
-                    }
-
-            .footer-copy {
-                font-size: 0.78rem;
-                color: var(--text-3);
-            }
-
-            /* ═══════════════════════════════════════════════════
-           SCROLL REVEAL UTILITY
+        /* ═══════════════════════════════════════════════════
+           SCROLL REVEAL
         ═══════════════════════════════════════════════════ */
-            .reveal {
-                opacity: 0;
-                transform: translateY(28px);
-                transition: opacity 0.65s ease, transform 0.65s ease;
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+            .reveal.visible {
+                opacity: 1;
+                transform: translateY(0);
             }
 
-                .reveal.visible {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
+        .reveal-delay-1 {
+            transition-delay: 0.1s;
+        }
 
-            .reveal-delay-1 {
-                transition-delay: 0.1s;
-            }
+        .reveal-delay-2 {
+            transition-delay: 0.2s;
+        }
 
-            .reveal-delay-2 {
-                transition-delay: 0.2s;
-            }
+        .reveal-delay-3 {
+            transition-delay: 0.3s;
+        }
 
-            .reveal-delay-3 {
-                transition-delay: 0.3s;
-            }
-
-            /* ═══════════════════════════════════════════════════
-           RESPONSIVE TWEAKS
+        /* ═══════════════════════════════════════════════════
+           RESPONSIVE
         ═══════════════════════════════════════════════════ */
-            @media (max-width: 768px) {
-                .how-grid::before {
-                    display: none;
-                }
-
-                .stat-divider {
-                    display: none;
-                }
-
-                .hero-stats {
-                    gap: 1.5rem;
-                }
-
-                .cta-card {
-                    padding: 2.5rem 1.5rem;
-                }
-
-                .footer-inner {
-                    justify-content: center;
-                    text-align: center;
-                }
-
-                .footer-links {
-                    justify-content: center;
-                }
+        @media (max-width: 768px) {
+            .cta-card {
+                padding: 2.5rem 1.5rem;
             }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -841,25 +1082,36 @@
         <div class="nav-inner">
 
             <a href="#" class="brand-name">
-                <span class="brand-dot"></span>
+                <div class="brand-mark">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <rect x="1" y="7" width="3" height="6" rx="1" fill="#10b981" />
+                        <rect x="5.5" y="4" width="3" height="9" rx="1" fill="#10b981" opacity="0.7" />
+                        <rect x="10" y="1" width="3" height="12" rx="1" fill="#10b981" opacity="0.4" />
+                    </svg>
+                </div>
                 EcoTrack
+                <span class="brand-tag">Enterprise</span>
             </a>
 
             <ul class="nav-links d-flex mb-0">
-                <li><a href="#features">Features</a></li>
-                <li><a href="#how-it-works">How It Works</a></li>
-                <li><a href="#about">About</a></li>
+                <li><a href="#features">Modules</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#pipeline">Pipeline</a></li>
             </ul>
 
             <div class="nav-cta">
-                <a href="/login/" class="nav-login d-none d-md-inline">Login</a>
-                <a href="/register/" class="btn-eco-primary">Get Started</a>
+                <a href="/login/" class="nav-login d-none d-md-inline">Sign In</a>
+                <a href="/register/" class="btn-primary">
+                    Deploy Instance
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M1 6h10M7 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </a>
             </div>
 
             <button class="nav-toggle" aria-label="Menu" id="navToggle">
                 <span></span><span></span><span></span>
             </button>
-
         </div>
     </nav>
 
@@ -869,51 +1121,121 @@
     ═══════════════════════════════════════════════════ -->
     <section class="hero">
 
-        <div class="hero-badge">
-            <span class="badge-dot"></span>
-            Now in public beta — join 200+ companies
+        <div class="hero-eyebrow">
+            <span class="ind-badge active">
+                <span class="led"></span>
+                // SYSTEM ONLINE — GHG PROTOCOL v2.1 COMPLIANT
+            </span>
         </div>
 
         <div class="hero-headline">
             <h1 class="display-headline">
-                Track Your Carbon<br />
-                Footprint <span class="accent-word">Smarter</span>
+                Enterprise Carbon<br />
+                Auditing <span class="em">Ledger</span>
             </h1>
         </div>
 
+        <p class="hero-sub-head">// ENGINE MATRIX — SCOPE 1 · 2 · 3 UNIFIED</p>
+
         <p class="hero-sub">
-            Monitor, analyze, and reduce your organization's emissions with powerful insights — built for teams that take sustainability seriously.
+            Institutional-grade emissions accounting for complex organizations.
+            Full-fidelity Scope coverage, real-time pipeline ingestion,
+            and audit-ready outputs aligned to CDP and TCFD frameworks.
         </p>
 
         <div class="hero-actions">
-            <a href="/register/" class="btn-eco-primary">
-                Get Started
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            <a href="/register/" class="btn-primary">
+                Request Access
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M1 6h10M7 2l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
             </a>
-            <a href="#features" class="btn-eco-ghost">Learn More</a>
+            <a href="#architecture" class="btn-ghost">View Architecture</a>
         </div>
 
-        <div class="hero-stats">
-            <div class="stat-chip">
-                <div class="stat-num">40%</div>
-                <div class="stat-label">Avg. Emission Reduction</div>
-            </div>
-            <div class="stat-divider"></div>
-            <div class="stat-chip">
-                <div class="stat-num">200+</div>
-                <div class="stat-label">Organizations</div>
-            </div>
-            <div class="stat-divider"></div>
-            <div class="stat-chip">
-                <div class="stat-num">12k+</div>
-                <div class="stat-label">Reports Generated</div>
-            </div>
-            <div class="stat-divider"></div>
-            <div class="stat-chip">
-                <div class="stat-num">99.9%</div>
-                <div class="stat-label">Uptime SLA</div>
+        <!-- Live Data Pipeline Terminal -->
+        <div class="terminal-wrap">
+            <div class="terminal">
+                <div class="terminal-bar">
+                    <div class="terminal-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <span class="terminal-title">ecotrack_audit_engine — live_pipeline.log</span>
+                    <span class="terminal-status">
+                        <span class="led"></span>
+                        INGESTING
+                    </span>
+                </div>
+
+                <div class="terminal-body">
+                    <div class="t-line">
+                        <span class="t-prompt">$</span>
+                        <span class="t-cmd">ecotrack pipeline <span class="t-key">--org</span> <span class="t-val-dim">acme-corp</span> <span class="t-key">--fiscal</span> <span class="t-val-dim">FY2025-Q2</span> <span class="t-key">--mode</span> <span class="t-val-em">LIVE</span></span>
+                    </div>
+                    <hr class="t-divider" />
+                    <div class="t-line">
+                        <span class="t-comment">&nbsp;&nbsp;[2025-06-10 08:14:02]</span>
+                        <span class="t-val-em">▶ PIPELINE_INIT</span>
+                        <span class="t-comment">— 4 data sources registered</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-comment">&nbsp;&nbsp;[08:14:03]</span>
+                        <span class="t-scope t-scope-1">SCOPE_1</span>
+                        <span class="t-key">direct_combustion</span>
+                        <span class="t-comment">→</span>
+                        <span class="t-val-em">847.2 tCO₂e</span>
+                        <span class="t-comment">/ fleet + stationary</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-comment">&nbsp;&nbsp;[08:14:04]</span>
+                        <span class="t-scope t-scope-2">SCOPE_2</span>
+                        <span class="t-key">grid_electricity</span>
+                        <span class="t-comment">→</span>
+                        <span class="t-val-warn">1,204.6 tCO₂e</span>
+                        <span class="t-comment">/ market-based EF applied</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-comment">&nbsp;&nbsp;[08:14:05]</span>
+                        <span class="t-scope t-scope-3">SCOPE_3</span>
+                        <span class="t-key">supply_chain_cat4</span>
+                        <span class="t-comment">→</span>
+                        <span class="t-val-dim">3,891.0 tCO₂e</span>
+                        <span class="t-comment">/ upstream transport</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-comment">&nbsp;&nbsp;[08:14:07]</span>
+                        <span class="t-val-em">✓ AUDIT_HASH</span>
+                        <span class="t-val-dim">sha256:9a3f1e…c82b</span>
+                        <span class="t-comment">— ledger entry sealed</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-prompt">$</span>
+                        <span class="t-cursor"></span>
+                    </div>
+                </div>
+
+                <div class="terminal-metrics">
+                    <div class="t-metric">
+                        <div class="t-metric-label">[TOTAL_EMISSIONS]</div>
+                        <div class="t-metric-val">5,942<span style="font-size:0.65rem;font-weight:400"> tCO₂e</span></div>
+                        <div class="t-metric-sub">FY2025 Q2 · VERIFIED</div>
+                    </div>
+                    <div class="t-metric">
+                        <div class="t-metric-label">[DELTA_YOY]</div>
+                        <div class="t-metric-val warn">−14.3%</div>
+                        <div class="t-metric-sub">vs Q2-2024 baseline</div>
+                    </div>
+                    <div class="t-metric">
+                        <div class="t-metric-label">[PIPELINE_LAT]</div>
+                        <div class="t-metric-val">1.8<span style="font-size:0.65rem;font-weight:400"> ms</span></div>
+                        <div class="t-metric-sub">p99 ingestion latency</div>
+                    </div>
+                    <div class="t-metric">
+                        <div class="t-metric-label">[UPTIME_SLA]</div>
+                        <div class="t-metric-val">99.9%</div>
+                        <div class="t-metric-sub">30-day rolling average</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -921,64 +1243,67 @@
 
 
     <!-- ═══════════════════════════════════════════════════
-         FEATURES
+         MODULES / FEATURES
     ═══════════════════════════════════════════════════ -->
     <div id="features" class="features-wrap">
 
         <div class="section-header reveal">
-            <span class="section-eyebrow">Features</span>
-            <h2 class="section-title">Everything you need to go green</h2>
-            <p class="section-desc">A complete toolkit for carbon intelligence — from raw data to boardroom-ready reports.</p>
+            <span class="section-eyebrow">// MODULE_REGISTRY</span>
+            <h2 class="section-title">Full-stack emissions intelligence</h2>
+            <p class="section-desc">Every capability your enterprise ESG team needs — consolidated into a single auditable ledger.</p>
         </div>
 
         <div class="features-grid">
 
-            <!-- Card 1 -->
             <div class="feature-card reveal">
+                <div class="feature-index">[MODULE_01] · INGESTION</div>
                 <div class="feature-icon">
-                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                        <path d="M11 2C6.03 2 2 6.03 2 11s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9zm.5 13H10v-5.5h1.5V15zm0-7H10V6.5h1.5V8z" fill="#c8f53e" />
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M3 5h14M3 10h10M3 15h6" stroke="#10b981" stroke-width="1.6" stroke-linecap="round" />
+                        <circle cx="16" cy="14" r="3" stroke="#10b981" stroke-width="1.4" />
+                        <path d="M16 12.5v1.5l1 1" stroke="#10b981" stroke-width="1.2" stroke-linecap="round" />
                     </svg>
                 </div>
-                <div class="feature-title">Emission Tracking</div>
-                <p class="feature-desc">Log fuel, electricity, travel, and supply chain emissions with precision. Every gram accounted for, in real time.</p>
+                <div class="feature-title">Emission Ledger Ingestion</div>
+                <p class="feature-desc">Structured intake for Scope 1, 2, and 3 sources — fuel combustion, grid electricity, logistics, and supply chain. Every record timestamped and hashed for audit integrity.</p>
             </div>
 
-            <!-- Card 2 -->
             <div class="feature-card reveal reveal-delay-1">
+                <div class="feature-index">[MODULE_02] · ANALYTICS</div>
                 <div class="feature-icon">
-                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                        <rect x="2" y="14" width="4" height="6" rx="1" fill="#c8f53e" />
-                        <rect x="9" y="9" width="4" height="11" rx="1" fill="#c8f53e" opacity="0.7" />
-                        <rect x="16" y="4" width="4" height="16" rx="1" fill="#c8f53e" opacity="0.4" />
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="2" y="12" width="3" height="6" rx="1" fill="#10b981" />
+                        <rect x="8.5" y="7" width="3" height="11" rx="1" fill="#10b981" opacity="0.7" />
+                        <rect x="15" y="3" width="3" height="15" rx="1" fill="#10b981" opacity="0.4" />
                     </svg>
                 </div>
-                <div class="feature-title">Department Comparison</div>
-                <p class="feature-desc">Drill down by department, team, or site. Identify which units are most efficient — and which need support.</p>
+                <div class="feature-title">Organizational Drill-Down</div>
+                <p class="feature-desc">Segment emissions by business unit, facility, or cost center. Identify outliers against peer benchmarks and track reduction trajectories by quarter.</p>
             </div>
 
-            <!-- Card 3 -->
             <div class="feature-card reveal reveal-delay-2">
+                <div class="feature-index">[MODULE_03] · VISUALIZATION</div>
                 <div class="feature-icon">
-                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                        <path d="M2 16 L6 10 L10 13 L14 7 L18 11 L20 8" stroke="#c8f53e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                        <circle cx="20" cy="8" r="2" fill="#c8f53e" />
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M2 14 L5 9 L9 12 L13 6 L17 10 L19 7" stroke="#10b981" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                        <circle cx="19" cy="7" r="1.5" fill="#10b981" />
                     </svg>
                 </div>
-                <div class="feature-title">Data Visualization</div>
-                <p class="feature-desc">Beautiful, interactive charts that turn raw emission data into clear visual stories. Shareable with one click.</p>
+                <div class="feature-title">Executive Data Visualization</div>
+                <p class="feature-desc">Waterfall charts, time-series trend overlays, and heatmaps calibrated for board-level reporting. Export to CDP, TCFD, and GRI templates with a single operation.</p>
             </div>
 
-            <!-- Card 4 -->
             <div class="feature-card reveal reveal-delay-3">
+                <div class="feature-index">[MODULE_04] · INTELLIGENCE</div>
                 <div class="feature-icon">
-                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                        <path d="M11 3a8 8 0 100 16A8 8 0 0011 3z" stroke="#c8f53e" stroke-width="1.6" fill="none" />
-                        <path d="M11 7v4l3 2" stroke="#c8f53e" stroke-width="1.6" stroke-linecap="round" />
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="10" r="7" stroke="#10b981" stroke-width="1.4" fill="none" />
+                        <path d="M10 6v4l2.5 2" stroke="#10b981" stroke-width="1.4" stroke-linecap="round" />
+                        <path d="M7 17.5C5 16.2 3.5 14 3 11.5" stroke="#10b981" stroke-width="1.2" stroke-linecap="round" />
                     </svg>
                 </div>
-                <div class="feature-title">Smart Insights</div>
-                <p class="feature-desc">AI-powered recommendations surface your biggest reduction opportunities and track progress against your targets.</p>
+                <div class="feature-title">Reduction Pathway Engine</div>
+                <p class="feature-desc">Model abatement levers across your value chain. Prioritize initiatives by cost per tCO₂e and track realized reductions against Science Based Targets commitments.</p>
             </div>
 
         </div>
@@ -986,36 +1311,38 @@
 
 
     <!-- ═══════════════════════════════════════════════════
-         HOW IT WORKS
+         ARCHITECTURE / HOW IT WORKS
     ═══════════════════════════════════════════════════ -->
-    <section class="how-section" id="how-it-works">
+    <section class="arch-section" id="architecture">
+        <div class="arch-inner">
 
-        <div class="section-header reveal" style="max-width:1200px;margin:0 auto 4rem;">
-            <span class="section-eyebrow">How It Works</span>
-            <h2 class="section-title">From setup to insight in minutes</h2>
-            <p class="section-desc">No consultants. No lengthy onboarding. Just sign up and start tracking.</p>
-        </div>
-
-        <div class="how-grid">
-
-            <div class="step-card reveal">
-                <div class="step-num">01</div>
-                <div class="step-title">Register Your Organization</div>
-                <p class="step-desc">Create your account, set up your organization profile, and invite your team in under two minutes.</p>
+            <div class="section-header reveal">
+                <span class="section-eyebrow">// DEPLOYMENT_PIPELINE</span>
+                <h2 class="section-title">From raw data to verified audit record</h2>
+                <p class="section-desc">Three-stage pipeline. No consultants. No lengthy onboarding. Operational within one business day.</p>
             </div>
 
-            <div class="step-card reveal reveal-delay-1">
-                <div class="step-num">02</div>
-                <div class="step-title">Add Energy &amp; Fuel Data</div>
-                <p class="step-desc">Input electricity, fuel, transport, and supply chain data. Use our templates or connect existing systems.</p>
-            </div>
+            <div class="pipeline-grid" id="pipeline">
 
-            <div class="step-card reveal reveal-delay-2">
-                <div class="step-num">03</div>
-                <div class="step-title">View Insights &amp; Reports</div>
-                <p class="step-desc">Get instant dashboards, trend analysis, and export-ready reports aligned with GHG Protocol standards.</p>
-            </div>
+                <div class="pipeline-step reveal">
+                    <div class="step-badge">[STEP_01] · PROVISION</div>
+                    <div class="step-title">Register Organization Node</div>
+                    <p class="step-desc">Create your enterprise instance, configure entity hierarchy, and provision user roles with granular permissions. API keys issued on first login.</p>
+                </div>
 
+                <div class="pipeline-step reveal reveal-delay-1">
+                    <div class="step-badge">[STEP_02] · INGEST</div>
+                    <div class="step-title">Connect Data Sources</div>
+                    <p class="step-desc">Push energy, fuel, transport, and procurement records via REST API, bulk CSV upload, or direct ERP connector. Emission factors applied automatically per GHG Protocol.</p>
+                </div>
+
+                <div class="pipeline-step reveal reveal-delay-2">
+                    <div class="step-badge">[STEP_03] · REPORT</div>
+                    <div class="step-title">Export Audit-Ready Ledger</div>
+                    <p class="step-desc">Generate verifiable, signed emissions reports aligned to CDP, CSRD, and TCFD disclosure requirements. Every record traceable to its origin source.</p>
+                </div>
+
+            </div>
         </div>
     </section>
 
@@ -1026,15 +1353,21 @@
     <section class="cta-section" id="about">
         <div class="cta-inner reveal">
             <div class="cta-card">
-                <p class="section-eyebrow">Get Started Today</p>
-                <h2 class="cta-title">Start tracking your carbon footprint today</h2>
-                <p class="cta-sub">Join hundreds of organizations that use EcoTrack to measure, reduce, and report their environmental impact — with confidence.</p>
-                <a href="/register/" class="btn-eco-primary" style="font-size:1rem;padding:0.85rem 2rem;">
-                    Create Account
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                <span class="cta-matrix-label">// INITIATE_ONBOARDING</span>
+                <h2 class="cta-title">Audit-ready carbon accounting starts here</h2>
+                <p class="cta-sub">Join forward-looking enterprises using EcoTrack to measure, reduce, and disclose environmental impact with institutional precision.</p>
+                <a href="/register/" class="btn-primary" style="font-size:0.95rem;padding:0.85rem 2rem;">
+                    Deploy Your Instance
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                        <path d="M1 6.5h11M7.5 2l4.5 4.5-4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                 </a>
+                <div class="cta-compliance">
+                    <span class="ind-badge">GHG Protocol</span>
+                    <span class="ind-badge">CDP Aligned</span>
+                    <span class="ind-badge">TCFD Ready</span>
+                    <span class="ind-badge">CSRD Compliant</span>
+                </div>
             </div>
         </div>
     </section>
@@ -1056,44 +1389,41 @@
     </footer>
 
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmq17jAgBHTMHiJpBsIL3q2dK6Cx" crossorigin="anonymous"></script>
-
     <script>
-  /* ── Navbar scroll effect ── */
-  const nav = document.getElementById('mainNav');
-  window.addEventListener('scroll', () => {
-    nav.classList.toggle('scrolled', window.scrollY > 40);
-  }, { passive: true });
+        /* ── Navbar scroll effect ── */
+        const nav = document.getElementById('mainNav');
+        window.addEventListener('scroll', () => {
+            nav.classList.toggle('scrolled', window.scrollY > 40);
+        }, { passive: true });
 
-  /* ── Scroll-reveal observer ── */
-  const revealEls = document.querySelectorAll('.reveal');
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.classList.add('visible');
-        observer.unobserve(e.target);
-      }
-    });
-  }, { threshold: 0.12 });
-  revealEls.forEach(el => observer.observe(el));
+        /* ── Scroll-reveal observer ── */
+        const revealEls = document.querySelectorAll('.reveal');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    e.target.classList.add('visible');
+                    observer.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.12 });
+        revealEls.forEach(el => observer.observe(el));
 
-  /* ── Mobile nav toggle ── */
-  const toggle = document.getElementById('navToggle');
-  const navLinks = document.querySelector('.nav-links');
-  toggle.addEventListener('click', () => {
-    const open = navLinks.style.display === 'flex';
-    navLinks.style.display = open ? '' : 'flex';
-    navLinks.style.flexDirection = 'column';
-    navLinks.style.position = 'absolute';
-    navLinks.style.top = '64px';
-    navLinks.style.left = '0';
-    navLinks.style.right = '0';
-    navLinks.style.background = 'rgba(8,8,8,0.97)';
-    navLinks.style.padding = '1rem 2rem';
-    navLinks.style.borderBottom = '1px solid rgba(255,255,255,0.07)';
-    if (open) navLinks.removeAttribute('style');
-  });
+        /* ── Mobile nav toggle ── */
+        const toggle = document.getElementById('navToggle');
+        const navLinks = document.querySelector('.nav-links');
+        toggle.addEventListener('click', () => {
+            const open = navLinks.style.display === 'flex';
+            navLinks.style.display = open ? '' : 'flex';
+            navLinks.style.flexDirection = 'column';
+            navLinks.style.position = 'absolute';
+            navLinks.style.top = '64px';
+            navLinks.style.left = '0';
+            navLinks.style.right = '0';
+            navLinks.style.background = 'rgba(5,5,6,0.97)';
+            navLinks.style.padding = '1rem 2rem';
+            navLinks.style.borderBottom = '1px solid rgba(255,255,255,0.06)';
+            if (open) navLinks.removeAttribute('style');
+        });
     </script>
 
 </body>
